@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 
 from extensions import Base
 from extensions import engine
@@ -21,8 +22,26 @@ CORS(app,
      allow_headers=["Content-Type"],
      supports_credentials=True)
 
-# Create all database tables
+def ensure_schema():
+    inspector = inspect(engine)
+
+    if "graph_relations" in inspector.get_table_names():
+        columns = [column["name"] for column in inspector.get_columns("graph_relations")]
+        if "document_id" not in columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE graph_relations ADD COLUMN document_id VARCHAR(36)")
+                )
+                connection.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_graph_relations_document_id ON graph_relations(document_id)"
+                    )
+                )
+
+
+# Create all database tables and patch schema if needed
 Base.metadata.create_all(bind=engine)
+ensure_schema()
 
 
 @app.route("/")

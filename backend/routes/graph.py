@@ -14,7 +14,7 @@ graph_bp = Blueprint(
 )
 
 
-@graph_bp.route("/", methods=["GET"])
+@graph_bp.route("", methods=["GET"], strict_slashes=False)
 def fetch_graph():
     document_id = request.args.get("document_id")
     db = SessionLocal()
@@ -25,7 +25,7 @@ def fetch_graph():
         db.close()
 
 
-@graph_bp.route("/", methods=["POST"])
+@graph_bp.route("", methods=["POST"], strict_slashes=False)
 def create_graph():
     payload = request.get_json(silent=True) or {}
     document_text = payload.get("text") or payload.get("document") or ""
@@ -48,7 +48,7 @@ def create_graph():
     return jsonify(graph_data)
 
 
-@graph_bp.route("/", methods=["DELETE"])
+@graph_bp.route("", methods=["DELETE"], strict_slashes=False)
 def delete_graph():
     db = SessionLocal()
     try:

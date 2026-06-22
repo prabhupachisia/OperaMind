@@ -22,8 +22,9 @@ os.makedirs(
 
 
 @upload_bp.route(
-    "/",
-    methods=["POST"]
+    "",
+    methods=["POST"],
+    strict_slashes=False
 )
 def upload_document():
 
@@ -77,7 +78,9 @@ def upload_document():
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
     except Exception as error:
-        return jsonify({"error": "Document ingestion failed."}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Document ingestion failed.", "details": str(error)}), 500
     finally:
         if "db" in locals():
             db.close()

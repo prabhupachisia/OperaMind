@@ -14,7 +14,7 @@ history_bp = Blueprint(
 )
 
 
-@history_bp.route("/", methods=["GET"])
+@history_bp.route("", methods=["GET"], strict_slashes=False)
 def list_history():
     db = SessionLocal()
     try:
