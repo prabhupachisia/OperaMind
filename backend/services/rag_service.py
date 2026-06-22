@@ -1,5 +1,6 @@
 from services.groq_service import client
 from services.retrieval_service import retrieve_documents
+from prompts.rag_prompt import RAG_PROMPT
 
 
 class RAGService:
@@ -9,19 +10,24 @@ class RAGService:
 
         context_parts = []
 
-        for doc in documents:
+        for index, doc in enumerate(documents, start=1):
 
             context_parts.append(
                 f"""
+Document {index}
+
 Source:
-{doc["source"]}
+{doc.get("source", "Unknown")}
+
+Page:
+{doc.get("page", "N/A")}
 
 Content:
-{doc["text"]}
+{doc.get("text", "")}
 """
             )
 
-        return "\n".join(context_parts)
+        return "\n\n".join(context_parts)
 
     @staticmethod
     def generate_answer(query: str):
@@ -33,38 +39,43 @@ Content:
 
         if not documents:
             return {
-                "answer": "No relevant information found in the knowledge base.",
-                "sources": []
+                "answer": (
+                    "No relevant information found "
+                    "in the knowledge base."
+                ),
+                "sources": [],
+                "confidence": 0
             }
 
         context = RAGService.build_context(
             documents
         )
 
-        prompt = f"""
-You are OperaMind.
+        # Placeholder for future graph retrieval
+        graph_context = ""
 
-Answer ONLY using the provided context.
-
-If the answer is not present in the context, say:
-
-"I could not find that information in the knowledge base."
-
-CONTEXT:
+        full_context = f"""
+VECTOR CONTEXT:
 {context}
 
-QUESTION:
-{query}
-
-Provide a clear answer and mention the sources used.
+GRAPH CONTEXT:
+{graph_context}
 """
+
+        prompt = RAG_PROMPT.format(
+            context=full_context,
+            query=query
+        )
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are OperaMind, a helpful enterprise knowledge assistant."
+                    "content": (
+                        "You are OperaMind, an Industrial "
+                        "Knowledge Intelligence Assistant."
+                    )
                 },
                 {
                     "role": "user",
@@ -75,12 +86,24 @@ Provide a clear answer and mention the sources used.
             max_tokens=1000
         )
 
+        sources = sorted(
+            {
+                doc.get("source")
+                for doc in documents
+                if doc.get("source")
+            }
+        )
+
+        confidence = round(
+            sum(
+                doc.get("score", 0)
+                for doc in documents
+            ) / len(documents),
+            2
+        )
+
         return {
             "answer": response.choices[0].message.content,
-            "sources": list(
-                {
-                    doc["source"]
-                    for doc in documents
-                }
-            )
+            "sources": sources,
+            "confidence": confidence
         }
