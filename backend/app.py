@@ -1,21 +1,24 @@
 from flask import Flask
 from flask_cors import CORS
 
-from routes.graph import graph_bp
-from routes.chat import chat_bp
-
 from extensions import Base
 from extensions import engine
 
 # Blueprints
 from routes.graph import graph_bp
+from routes.chat import chat_bp
 from routes.upload import upload_bp
 
 # IMPORTANT
 import models
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS with explicit configuration for development
+CORS(app, 
+     origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type"],
+     supports_credentials=True)
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
