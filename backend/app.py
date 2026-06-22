@@ -40,6 +40,10 @@ app.register_blueprint(
     url_prefix="/chat"
 )
 
+app.register_blueprint(
+    upload_bp,
+    url_prefix="/upload"
+)
 
 if __name__ == "__main__":
     app.run(
