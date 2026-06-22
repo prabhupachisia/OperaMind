@@ -5,6 +5,15 @@ const CHAT_PATH = import.meta.env.VITE_CHAT_PATH || '/chat'
 const HISTORY_PATH = import.meta.env.VITE_HISTORY_PATH || '/history'
 const COMPLIANCE_PATH = import.meta.env.VITE_COMPLIANCE_PATH || '/compliance'
 const INCIDENTS_PATH = import.meta.env.VITE_INCIDENTS_PATH || '/incidents'
+const CACHE_TTL_MS = 30_000
+
+const cache = {
+  history: {
+    data: null,
+    expiresAt: 0,
+    request: null,
+  },
+}
 
 function buildEndpoint(path) {
   const base = API_URL.replace(/\/+$/, '')
@@ -48,7 +57,12 @@ export async function uploadDocument(file, documentType = 'unknown') {
     throw new Error(body?.error || 'Document upload failed')
   }
 
-  return response.json()
+  const data = await response.json()
+  cache.history.data = null
+  cache.history.expiresAt = 0
+  cache.history.request = null
+
+  return data
 }
 
 export async function sendChatQuery(query) {
@@ -88,18 +102,36 @@ export async function fetchGraph(documentId) {
 }
 
 export async function fetchHistory() {
-  const endpoint = buildEndpoint(HISTORY_PATH)
+  const now = Date.now()
 
-  const response = await fetch(endpoint, {
-    method: 'GET',
-  })
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new Error(body?.error || 'History fetch failed')
+  if (cache.history.data && cache.history.expiresAt > now) {
+    return cache.history.data
   }
 
-  return response.json()
+  if (cache.history.request) {
+    return cache.history.request
+  }
+
+  const endpoint = buildEndpoint(HISTORY_PATH)
+
+  cache.history.request = fetch(endpoint, {
+    method: 'GET',
+  }).then(async (response) => {
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      throw new Error(body?.error || 'History fetch failed')
+    }
+
+    const data = await response.json()
+    cache.history.data = data
+    cache.history.expiresAt = Date.now() + CACHE_TTL_MS
+
+    return data
+  }).finally(() => {
+    cache.history.request = null
+  })
+
+  return cache.history.request
 }
 
 export async function fetchCompliance(documentId) {
