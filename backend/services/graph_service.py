@@ -121,26 +121,41 @@ def generate_graph(document_text: str):
     return build_graph_response(raw_graph)
 
 
-def save_graph(graph_data, db):
-    relationships = graph_data.get("relationships", [])
+def save_graph(
+    graph_data,
+    document_id,
+    db
+):
+    relationships = graph_data.get(
+        "relationships",
+        []
+    )
 
     for rel in relationships:
+
         source = rel["source"]
         relation = rel["relation"]
         target = rel["target"]
 
-        existing = db.query(GraphRelation).filter_by(
+        existing = db.query(
+            GraphRelation
+        ).filter_by(
+            document_id=document_id,
             source=source,
             relation=relation,
             target=target
         ).first()
 
         if existing is None:
-            db.add(GraphRelation(
-                source=source,
-                relation=relation,
-                target=target
-            ))
+
+            db.add(
+                GraphRelation(
+                    document_id=document_id,
+                    source=source,
+                    relation=relation,
+                    target=target
+                )
+            )
 
     db.commit()
 
@@ -150,26 +165,112 @@ def clear_graph(db):
     db.commit()
 
 
-def get_graph(db):
-    relations = db.query(GraphRelation).all()
+def get_graph(
+    db,
+    document_id=None
+):
+
+    query = db.query(
+        GraphRelation
+    )
+
+    if document_id:
+        query = query.filter_by(
+            document_id=document_id
+        )
+
+    relations = query.all()
+
     node_set = {}
     edges = []
 
     for rel in relations:
-        source = normalize_text(rel.source)
-        target = normalize_text(rel.target)
+
+        source = normalize_text(
+            rel.source
+        )
+
+        target = normalize_text(
+            rel.target
+        )
 
         if source not in node_set:
-            node_set[source] = {"id": source, "label": source, "type": "entity"}
+            node_set[source] = {
+                "id": source,
+                "label": source,
+                "type": "entity"
+            }
+
         if target not in node_set:
-            node_set[target] = {"id": target, "label": target, "type": "entity"}
+            node_set[target] = {
+                "id": target,
+                "label": target,
+                "type": "entity"
+            }
 
         edges.append({
-            "id": f"edge-{len(edges)}-{re.sub(r'\s+', '_', source)}-{re.sub(r'\s+', '_', target)}",
+            "id": (
+                f"edge-{len(edges)}"
+            ),
             "source": source,
             "target": target,
             "label": rel.relation,
             "type": "smoothstep"
         })
 
-    return {"nodes": list(node_set.values()), "edges": edges}
+    return {
+        "nodes": list(
+            node_set.values()
+        ),
+        "edges": edges
+    }
+
+def get_entity_relations(
+    entity_name,
+    db
+):
+
+    relations = db.query(
+        GraphRelation
+    ).filter(
+        (GraphRelation.source == entity_name)
+        |
+        (GraphRelation.target == entity_name)
+    ).all()
+
+    results = []
+
+    for rel in relations:
+
+        results.append({
+            "source": rel.source,
+            "relation": rel.relation,
+            "target": rel.target
+        })
+
+    return results
+
+def build_graph_context(
+    entity_name,
+    db
+):
+
+    relations = get_entity_relations(
+        entity_name,
+        db
+    )
+
+    if not relations:
+        return ""
+
+    lines = []
+
+    for rel in relations:
+
+        lines.append(
+            f"{rel['source']} "
+            f"{rel['relation']} "
+            f"{rel['target']}"
+        )
+
+    return "\n".join(lines)

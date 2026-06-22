@@ -1,27 +1,44 @@
-from textwrap import wrap
+from langchain_text_splitters import (
+    RecursiveCharacterTextSplitter
+)
 
 
 def chunk_text(
-    text,
+    pages,
     chunk_size=1000,
     overlap=200
 ):
-    """
-    Creates overlapping chunks
-    """
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=overlap,
+        separators=[
+            "\n\n",
+            "\n",
+            ". ",
+            " ",
+            ""
+        ]
+    )
 
     chunks = []
 
-    start = 0
+    chunk_id = 0
 
-    while start < len(text):
+    for page in pages:
 
-        end = start + chunk_size
+        page_chunks = splitter.split_text(
+            page["text"]
+        )
 
-        chunk = text[start:end]
+        for chunk in page_chunks:
 
-        chunks.append(chunk)
+            chunks.append({
+                "chunk_id": chunk_id,
+                "page": page["page"],
+                "text": chunk
+            })
 
-        start += chunk_size - overlap
+            chunk_id += 1
 
     return chunks
