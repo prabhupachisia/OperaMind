@@ -13,3 +13,10 @@ def get_embedding(text: str):
         text,
         normalize_embeddings=True
     ).tolist()
+
+
+def get_embeddings(texts: list[str]):
+    return model.encode(
+        texts,
+        normalize_embeddings=True
+    ).tolist()

@@ -5,6 +5,8 @@ from flask import Blueprint
 from flask import request
 from flask import jsonify
 
+from config import UPLOAD_FOLDER
+
 from services.pdf_service import extract_text_from_pdf
 from services.chunking_service import chunk_text
 
@@ -12,8 +14,6 @@ upload_bp = Blueprint(
     "upload",
     __name__
 )
-
-UPLOAD_FOLDER = "uploads"
 
 os.makedirs(
     UPLOAD_FOLDER,
@@ -28,28 +28,41 @@ os.makedirs(
 def upload_document():
 
     if "file" not in request.files:
-
         return jsonify({
             "error": "No file provided"
         }), 400
 
     file = request.files["file"]
 
+    if file.filename == "":
+        return jsonify({
+            "error": "No file selected"
+        }), 400
+
     filename = f"{uuid.uuid4()}.pdf"
 
-    path = os.path.join(
+    file_path = os.path.join(
         UPLOAD_FOLDER,
         filename
     )
 
-    file.save(path)
+    file.save(file_path)
 
-    text = extract_text_from_pdf(path)
+    text = extract_text_from_pdf(
+        file_path
+    )
+
+    if not text.strip():
+        return jsonify({
+            "error": "Could not extract text from PDF"
+        }), 400
 
     chunks = chunk_text(text)
 
     return jsonify({
+        "message": "Document processed successfully",
         "filename": filename,
         "text_length": len(text),
-        "chunk_count": len(chunks)
-    })
+        "chunk_count": len(chunks),
+        "sample_chunk": chunks[0] if chunks else None
+    }), 200
