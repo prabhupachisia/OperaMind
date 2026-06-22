@@ -1,43 +1,49 @@
-from extensions import db
 from datetime import datetime
 import uuid
 
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
-class DocumentChunk(db.Model):
+from extensions import Base
+
+
+class DocumentChunk(Base):
 
     __tablename__ = "document_chunks"
 
-    id = db.Column(
-        db.String(36),
+    id = Column(
+        String(36),
         primary_key=True,
         default=lambda: str(uuid.uuid4())
     )
 
-    document_id = db.Column(
-        db.String(36),
-        db.ForeignKey("documents.id"),
+    document_id = Column(
+        String(36),
+        ForeignKey("documents.id"),
         nullable=False
     )
 
-    chunk_index = db.Column(
-        db.Integer,
+    chunk_index = Column(
+        Integer,
         nullable=False
     )
 
-    page = db.Column(
-        db.Integer
+    page = Column(
+        Integer
     )
 
-    text = db.Column(
-        db.Text,
+    text = Column(
+        Text,
         nullable=False
     )
 
-    pinecone_id = db.Column(
-        db.String(255)
+    pinecone_id = Column(
+        String(255)
     )
 
-    created_at = db.Column(
-        db.DateTime,
+    created_at = Column(
+        DateTime,
         default=datetime.utcnow
     )
+
+    document = relationship("Document", back_populates="chunks")

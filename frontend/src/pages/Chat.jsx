@@ -1,4 +1,51 @@
+import { useState } from 'react'
+import { sendChatQuery } from '../services/api'
+
+const QUICK_PROMPTS = [
+  'Show recent maintenance anomalies',
+  'Find documents mentioning P101',
+  'List compliance gaps in safety procedures',
+  'Summarize the latest inspection report',
+]
+
 export default function Chat() {
+  const [query, setQuery] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [sources, setSources] = useState([])
+  const [confidence, setConfidence] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+
+    if (!query.trim()) {
+      setError('Enter a question to continue.')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setAnswer('')
+    setSources([])
+    setConfidence(null)
+
+    try {
+      const response = await sendChatQuery(query)
+      setAnswer(response.answer || 'No answer returned from the knowledge base.')
+      setSources(response.sources || [])
+      setConfidence(response.confidence ?? 0)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleQuickPrompt = (prompt) => {
+    setQuery(prompt)
+  }
+
   return (
     <div className="grid gap-8">
       <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/20">
@@ -11,30 +58,64 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-        <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Conversation</p>
-        <div className="mt-6 space-y-4 border-t border-white/5 pt-6 text-slate-300">
-          <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-4">
-            <p className="text-sm font-medium text-cyan-300">You</p>
-            <p className="mt-2 text-slate-200">What caused the P101 pump failure and what corrective actions were recorded?</p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-4">
-            <p className="text-sm font-medium text-emerald-300">Copilot</p>
-            <p className="mt-2 text-slate-200">Pump P101 failure was linked to seal wear. The last corrective action was seal replacement and a vibration monitoring procedure update.</p>
-          </div>
+      <form onSubmit={handleSubmit} className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
+        <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Ask a question</p>
+        <textarea
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          rows={5}
+          placeholder="Example: What corrective actions were recorded for the last P101 inspection?"
+          className="mt-4 w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-4 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15"
+        />
+        <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-3xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Analyzing corpus...' : 'Ask OperaMind'}
+          </button>
+          <span className="text-sm text-slate-400">
+            Confidence: {confidence !== null ? `${confidence}` : '–'}
+          </span>
         </div>
-      </div>
+
+        {error ? (
+          <div className="mt-5 rounded-3xl bg-rose-500/10 border border-rose-400/15 p-4 text-sm text-rose-200">
+            {error}
+          </div>
+        ) : null}
+
+        {answer ? (
+          <div className="mt-5 space-y-4 rounded-3xl border border-white/10 bg-slate-950/80 p-5 text-slate-200">
+            <div>
+              <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Answer</p>
+              <p className="mt-3 text-slate-100">{answer}</p>
+            </div>
+            {sources.length > 0 ? (
+              <div>
+                <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Sources</p>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-400">
+                  {sources.map((source) => (
+                    <li key={source}>{source}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </form>
 
       <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-8 shadow-2xl shadow-slate-950/20">
         <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Quick prompts</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[
-            'Show recent maintenance anomalies',
-            'Find documents mentioning P101',
-            'List compliance gaps in safety procedures',
-            'Summarize the latest inspection report',
-          ].map((prompt) => (
-            <button key={prompt} className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-left text-sm text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-900">
+          {QUICK_PROMPTS.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => handleQuickPrompt(prompt)}
+              className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-left text-sm text-slate-200 transition hover:border-cyan-400/30 hover:bg-slate-900"
+            >
               {prompt}
             </button>
           ))}

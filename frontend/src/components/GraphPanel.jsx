@@ -24,7 +24,7 @@ export default function GraphPanel({ nodes, edges }) {
   )
 
   return (
-    <div className="h-130 rounded-4xl border border-white/10 bg-slate-950/75 p-4 shadow-2xl shadow-cyan-500/10">
+    <div className="min-h-[520px] rounded-4xl border border-white/10 bg-slate-950/75 p-4 shadow-2xl shadow-cyan-500/10">
       <ReactFlow nodes={flowNodes} edges={edges} fitView attributionPosition="bottom-left">
         <MiniMap nodeStrokeColor={(node) => (node.selected ? '#38bdf8' : '#94a3b8')} nodeColor={(node) => '#0f172a'} zoomOnScroll={false} />
         <Background gap={20} size={2} color="#334155" />

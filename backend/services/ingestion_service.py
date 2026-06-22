@@ -22,7 +22,8 @@ from services.chunking_service import (
 def process_document(
     *,
     filename: str,
-    document_text: str,
+    original_filename: str,
+    pages: list[dict],
     db,
     document_type: str = "unknown"
 ):
@@ -44,6 +45,7 @@ def process_document(
 
     document = Document(
         filename=filename,
+        original_filename=original_filename,
         document_type=document_type
     )
 
@@ -55,7 +57,7 @@ def process_document(
     # Chunk Document
     # --------------------------------------------------
 
-    chunks = chunk_text(document_text)
+    chunks = chunk_text(pages)
 
     saved_chunks = []
 
@@ -118,7 +120,7 @@ def process_document(
             "metadata": {
                 "document_id": str(document.id),
                 "chunk_id": str(chunk.id),
-                "source": filename,
+                "source": original_filename,
                 "document_type": document_type,
                 "page": chunk.page,
                 "text": chunk.text
@@ -131,6 +133,10 @@ def process_document(
     # --------------------------------------------------
     # Graph Generation
     # --------------------------------------------------
+
+    document_text = "\n\n".join(
+        page.get("text", "") for page in pages
+    )
 
     graph_data = generate_graph(
         document_text
@@ -149,6 +155,7 @@ def process_document(
     return {
         "document_id": document.id,
         "filename": filename,
+        "original_filename": original_filename,
         "document_type": document_type,
         "chunk_count": len(saved_chunks),
         "graph_nodes": len(

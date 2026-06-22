@@ -1,45 +1,48 @@
-from extensions import db
 from datetime import datetime
 import uuid
 
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.orm import relationship
 
-class Document(db.Model):
+from extensions import Base
+
+
+class Document(Base):
 
     __tablename__ = "documents"
 
-    id = db.Column(
-        db.String(36),
+    id = Column(
+        String(36),
         primary_key=True,
         default=lambda: str(uuid.uuid4())
     )
 
-    filename = db.Column(
-        db.String(255),
+    filename = Column(
+        String(255),
         nullable=False
     )
 
-    original_filename = db.Column(
-        db.String(255),
+    original_filename = Column(
+        String(255),
         nullable=False
     )
 
-    document_type = db.Column(
-        db.String(100)
+    document_type = Column(
+        String(100)
     )
 
-    uploaded_at = db.Column(
-        db.DateTime,
+    uploaded_at = Column(
+        DateTime,
         default=datetime.utcnow
     )
 
-    status = db.Column(
-        db.String(50),
+    status = Column(
+        String(50),
         default="processed"
     )
 
-    chunks = db.relationship(
+    chunks = relationship(
         "DocumentChunk",
-        backref="document",
-        lazy=True,
+        back_populates="document",
         cascade="all, delete-orphan"
     )

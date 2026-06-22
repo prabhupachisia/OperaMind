@@ -6,7 +6,9 @@ import os
 import uuid
 
 from config import UPLOAD_FOLDER
-from services.document_processor import process_document
+from extensions import SessionLocal
+from services.extractors.extractor_factory import get_extractor
+from services.ingestion_service import process_document
 
 upload_bp = Blueprint(
     "upload",
@@ -50,12 +52,32 @@ def upload_document():
 
     file.save(file_path)
 
-    result = process_document(
-        file_path=file_path
-    )
+    document_type = request.form.get("document_type", "unknown")
 
-    return jsonify({
-        "message": "Document processed successfully",
-        "filename": filename,
-        **result
-    }), 200
+    try:
+        extractor = get_extractor(file_path)
+        pages = extractor.extract(file_path)
+
+        if not pages or not any(page.get("text", "").strip() for page in pages):
+            return jsonify({"error": "Unable to extract text from the uploaded file."}), 400
+
+        db = SessionLocal()
+        result = process_document(
+            filename=filename,
+            original_filename=file.filename,
+            pages=pages,
+            document_type=document_type,
+            db=db
+        )
+        return jsonify({
+            "message": "Document processed successfully",
+            "filename": filename,
+            **result
+        }), 200
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        return jsonify({"error": "Document ingestion failed."}), 500
+    finally:
+        if "db" in locals():
+            db.close()

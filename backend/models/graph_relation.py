@@ -1,34 +1,37 @@
-from extensions import db
 import uuid
 
+from sqlalchemy import Column, String
 
-class GraphRelation(db.Model):
+from extensions import Base
+
+
+class GraphRelation(Base):
 
     __tablename__ = "graph_relations"
 
-    id = db.Column(
-        db.String(36),
+    id = Column(
+        String(36),
         primary_key=True,
         default=lambda: str(uuid.uuid4())
     )
 
-    document_id = db.Column(
-        db.String(36),
+    document_id = Column(
+        String(36),
         nullable=False,
         index=True
     )
 
-    source = db.Column(
-        db.String(255),
+    source = Column(
+        String(255),
         nullable=False
     )
 
-    relation = db.Column(
-        db.String(255),
+    relation = Column(
+        String(255),
         nullable=False
     )
 
-    target = db.Column(
-        db.String(255),
+    target = Column(
+        String(255),
         nullable=False
     )

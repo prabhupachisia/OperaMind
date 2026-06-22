@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { extractGraph } from '../services/api'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { extractGraph, fetchGraph, fetchHistory } from '../services/api'
 import GraphControls from '../components/GraphControls'
 import GraphPanel from '../components/GraphPanel'
 import Header from '../components/Header'
@@ -15,9 +16,12 @@ export default function Dashboard() {
   const [documentText, setDocumentText] = useState(DEFAULT_TEXT)
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
+  const [documents, setDocuments] = useState([])
+  const [selectedDocumentId, setSelectedDocumentId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('Ready to generate your industrial knowledge graph.')
 
+  const [searchParams] = useSearchParams()
   const endpoint = `${API_URL}${GRAPH_PATH}`
 
   const summary = useMemo(
@@ -29,23 +33,52 @@ export default function Dashboard() {
     [nodes.length, edges.length, status],
   )
 
-  const extractGraphHandler = async () => {
+  const loadGraph = async (documentId) => {
     setLoading(true)
-    setStatus('Extracting graph from document...')
+    setStatus('Loading saved graph...')
 
     try {
-      const data = await extractGraph(documentText)
+      const data = documentId ? await fetchGraph(documentId) : await extractGraph(documentText)
       setNodes(data.nodes || [])
       setEdges(data.edges || [])
-      setStatus('Graph successfully generated. Review the connected entities below.')
+      setStatus(documentId ? 'Loaded saved graph from ingestion history.' : 'Graph successfully generated. Review the connected entities below.')
     } catch (error) {
-      setStatus(`Extraction failed: ${error.message}`)
+      setStatus(`Graph load failed: ${error.message}`)
       setNodes([])
       setEdges([])
     } finally {
       setLoading(false)
     }
   }
+
+  const extractGraphHandler = async () => {
+    await loadGraph()
+  }
+
+  const handleSelectDocument = async (documentId) => {
+    setSelectedDocumentId(documentId)
+    await loadGraph(documentId)
+  }
+
+  useEffect(() => {
+    const selectedId = searchParams.get('document_id')
+
+    if (selectedId) {
+      setSelectedDocumentId(selectedId)
+      handleSelectDocument(selectedId)
+    }
+
+    const loadHistory = async () => {
+      try {
+        const history = await fetchHistory()
+        setDocuments(history.documents || [])
+      } catch (error) {
+        console.warn('Unable to load history:', error)
+      }
+    }
+
+    loadHistory()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_30%),#020617] text-slate-100">
@@ -101,7 +134,7 @@ export default function Dashboard() {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${nodes.length}-${edges.length}`}
+            key={`${nodes.length}-${edges.length}-${selectedDocumentId}`}
             initial={{ opacity: 0, y: 36 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -113,7 +146,9 @@ export default function Dashboard() {
             <div className="space-y-5 rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/10">
               <div className="rounded-3xl border border-white/10 bg-slate-950/75 p-5">
                 <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Graph output</p>
-                <p className="mt-4 text-2xl font-semibold text-white">Visual JSON preview</p>
+                <p className="mt-4 text-2xl font-semibold text-white">
+                  {selectedDocumentId ? 'Saved graph from history' : 'Visual JSON preview'}
+                </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
                 <p className="font-semibold text-white">Rendered graph is compatible with React Flow.</p>
@@ -122,6 +157,30 @@ export default function Dashboard() {
                   <li>• <strong>edges</strong> are shown as directed relationships.</li>
                   <li>• Each relation label is normalized for clean graph rendering.</li>
                 </ul>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
+                <p className="font-semibold text-white">Saved document graphs</p>
+                <p className="mt-2 text-slate-400">Select a previously ingested document to load its persisted knowledge graph.</p>
+                <div className="mt-4 space-y-3">
+                  {documents.length === 0 ? (
+                    <p className="text-slate-500">No ingested documents found. Upload a document first.</p>
+                  ) : (
+                    documents.map((doc) => (
+                      <button
+                        key={doc.document_id}
+                        type="button"
+                        onClick={() => handleSelectDocument(doc.document_id)}
+                        className={`block w-full rounded-3xl border px-4 py-3 text-left text-sm transition ${selectedDocumentId === String(doc.document_id) ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-white/10 bg-slate-900/80 text-slate-200'} hover:border-cyan-300/50`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold">{doc.original_filename || doc.filename}</span>
+                          <span className="text-xs uppercase tracking-[0.35em] text-slate-400">{doc.document_type || 'Document'}</span>
+                        </div>
+                        <p className="mt-2 text-slate-400 text-xs">Uploaded {new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>

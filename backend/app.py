@@ -8,6 +8,7 @@ from extensions import engine
 from routes.graph import graph_bp
 from routes.chat import chat_bp
 from routes.upload import upload_bp
+from routes.history import history_bp
 
 # IMPORTANT
 import models
@@ -46,6 +47,11 @@ app.register_blueprint(
 app.register_blueprint(
     upload_bp,
     url_prefix="/upload"
+)
+
+app.register_blueprint(
+    history_bp,
+    url_prefix="/history"
 )
 
 if __name__ == "__main__":
