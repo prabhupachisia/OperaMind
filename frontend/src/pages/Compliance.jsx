@@ -25,23 +25,23 @@ export default function Compliance() {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      try {
-        const history = await fetchHistory()
-        setDocuments(history.documents || [])
-      } catch {
-        setDocuments([])
-      }
+      const historyRequest = fetchHistory()
+        .then((history) => setDocuments(history.documents || []))
+        .catch(() => setDocuments([]))
 
-      await loadReport()
+      await Promise.all([
+        historyRequest,
+        loadReport(),
+      ])
     }
 
     loadInitialData()
   }, [])
 
-  const handleDocumentChange = async (event) => {
+  const handleDocumentChange = (event) => {
     const documentId = event.target.value
     setSelectedDocumentId(documentId)
-    await loadReport(documentId)
+    loadReport(documentId)
   }
 
   return (

@@ -1,33 +1,40 @@
-import { Activity, ArrowRight, Bot, FileText, GitBranch, ShieldCheck, Upload } from 'lucide-react'
+import { Activity, ArrowRight, Bot, FileWarning, GitBranch, ShieldCheck, Upload } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchHistory } from '../services/api'
 
 const workstreams = [
   {
-    title: 'Ingest records',
-    description: 'Upload PDFs and operational files into the extraction, chunking, OCR, and graph pipeline.',
+    title: 'Universal ingestion',
+    description: 'Process PDFs, scanned records, procedures, inspections, JSON, CSV, and operating documents.',
     path: '/upload',
     icon: Upload,
   },
   {
-    title: 'Explore graph',
-    description: 'Inspect equipment, incidents, procedures, OEMs, locations, and operational relationships.',
+    title: 'Knowledge graph',
+    description: 'Connect equipment tags, clauses, incidents, OEM references, procedures, and document sources.',
     path: '/graph',
     icon: GitBranch,
   },
   {
-    title: 'Ask copilot',
-    description: 'Query the knowledge base using source-backed retrieval across uploaded documents.',
+    title: 'Expert copilot',
+    description: 'Ask operational and maintenance questions with source-backed answers from the corpus.',
     path: '/chat',
     icon: Bot,
   },
   {
-    title: 'Audit readiness',
-    description: 'Review compliance evidence, missing procedures, inspection gaps, and supporting snippets.',
+    title: 'Compliance intelligence',
+    description: 'Review regulatory evidence, missing procedures, audit gaps, and supporting document snippets.',
     path: '/compliance',
     icon: ShieldCheck,
   },
+]
+
+const impactAreas = [
+  'Reduce time lost searching across disconnected plant document systems.',
+  'Preserve operational knowledge before experienced engineers retire.',
+  'Expose equipment history and repeated failure patterns at the point of need.',
+  'Support quality, safety, and compliance decisions with traceable evidence.',
 ]
 
 export default function Home() {
@@ -65,10 +72,10 @@ export default function Home() {
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Operations command center</p>
           <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-            Industrial knowledge, graph intelligence, and document retrieval in one console.
+            AI-powered industrial knowledge intelligence for fragmented plant records.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
-            OperaMind converts maintenance records, inspections, procedures, incidents, and compliance evidence into an operational knowledge base your teams can search, inspect, and act on.
+            OperaMind ingests engineering files, maintenance records, safety procedures, inspection reports, operating instructions, and compliance evidence, then turns them into a queryable knowledge base and connected graph.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Link to="/upload" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800">
@@ -79,6 +86,14 @@ export default function Home() {
               Open graph
               <GitBranch size={17} />
             </Link>
+          </div>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            {impactAreas.map((item) => (
+              <div key={item} className="flex gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                <FileWarning size={17} className="mt-1 shrink-0 text-slate-500" />
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         </div>
 

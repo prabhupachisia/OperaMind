@@ -90,10 +90,7 @@ export default function Incidents() {
           <div className="mt-4 grid gap-3">
             {similar.map((item) => (
               <div key={item.chunk_id} className="rounded-md border border-slate-200 p-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="font-semibold text-slate-950">{item.source} {item.page ? `p.${item.page}` : ''}</p>
-                  <p className="text-xs font-semibold uppercase text-slate-500">Similarity {item.score}</p>
-                </div>
+                <p className="font-semibold text-slate-950">{item.source} {item.page ? `p.${item.page}` : ''}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{item.summary}</p>
               </div>
             ))}
