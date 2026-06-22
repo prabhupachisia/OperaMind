@@ -1,11 +1,7 @@
 import fitz
 
-try:
-    import pytesseract
-    from PIL import Image
-except ImportError:
-    pytesseract = None
-    Image = None
+from services.ocr_service import extract_text_from_image
+from services.ocr_service import image_from_bytes
 
 
 class PDFExtractor:
@@ -18,13 +14,10 @@ class PDFExtractor:
             for page_num, page in enumerate(document):
                 text = page.get_text().strip()
 
-                if not text and pytesseract and Image:
+                if not text:
                     pix = page.get_pixmap(alpha=False)
-                    image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                    try:
-                        text = pytesseract.image_to_string(image)
-                    except Exception:
-                        text = ""
+                    image = image_from_bytes("RGB", [pix.width, pix.height], pix.samples)
+                    text = extract_text_from_image(image)
 
                 pages.append({
                     "page": page_num + 1,

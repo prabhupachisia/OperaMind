@@ -26,6 +26,11 @@ class GraphRelation(Base):
         nullable=False
     )
 
+    source_type = Column(
+        String(100),
+        default="Entity"
+    )
+
     relation = Column(
         String(255),
         nullable=False
@@ -34,4 +39,9 @@ class GraphRelation(Base):
     target = Column(
         String(255),
         nullable=False
+    )
+
+    target_type = Column(
+        String(100),
+        default="Entity"
     )

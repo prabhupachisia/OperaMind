@@ -2,10 +2,49 @@ import json
 import re
 from pathlib import Path
 
+from sqlalchemy import inspect
+from sqlalchemy import text
+
+from models.document import Document
+from models.document_chunk import DocumentChunk
 from models.graph_relation import GraphRelation
 from services.groq_service import get_groq_client
 
 PROMPT_FILE = Path(__file__).resolve().parents[1] / "prompts" / "graph_generation.txt"
+
+ENTITY_TYPES = {
+    "Equipment",
+    "Person",
+    "WorkOrder",
+    "Incident",
+    "NearMiss",
+    "Compliance",
+    "OEM",
+    "Procedure",
+    "Inspection",
+    "Location",
+    "Document",
+}
+
+RELATION_TYPES = {
+    "AUTHORED_BY",
+    "MAINTAINED_BY",
+    "MAINTAINED",
+    "AFFECTED",
+    "CONNECTED_TO",
+    "COMPLIES_WITH",
+    "MANUFACTURED_BY",
+    "HAS_INCIDENT",
+    "HAS_WORKORDER",
+    "REPORTED_BY",
+    "RELATED_TO",
+    "REFERENCED_IN",
+    "LOCATED_IN",
+    "HAS_PROCEDURE",
+    "HAS_INSPECTION",
+}
+
+MAX_GRAPH_FIELD_LENGTH = 255
 
 
 def load_graph_prompt(document_text: str):
@@ -46,227 +85,385 @@ def parse_graph_response(content: str):
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        json_text = extract_json_object(content)
-        return json.loads(json_text)
+        return json.loads(extract_json_object(content))
 
 
-def normalize_text(value: str):
-    return " ".join(value.strip().split())
+def normalize_text(value):
+    return " ".join(str(value or "").strip().split())
 
 
-def normalize_relation(value: str):
+def fit_graph_field(value):
+    value = normalize_text(value)
+    if len(value) <= MAX_GRAPH_FIELD_LENGTH:
+        return value
+    return value[:MAX_GRAPH_FIELD_LENGTH].rstrip()
+
+
+def normalize_relation(value):
     cleaned = normalize_text(value)
     cleaned = re.sub(r"[^A-Za-z0-9 ]+", " ", cleaned)
-    return re.sub(r"\s+", "_", cleaned).strip("_").upper()
+    relation = re.sub(r"\s+", "_", cleaned).strip("_").upper()
+    return relation if relation in RELATION_TYPES else relation or "RELATED_TO"
+
+
+def normalize_entity_type(value):
+    cleaned = normalize_text(value).replace("_", "")
+    for entity_type in ENTITY_TYPES:
+        if entity_type.lower() == cleaned.lower():
+            return entity_type
+    return "Entity"
+
+
+def add_node(nodes_by_id, node_id, node_type="Entity", label=None):
+    node_id = normalize_text(node_id)
+    if not node_id:
+        return
+
+    node_type = normalize_entity_type(node_type)
+    existing = nodes_by_id.get(node_id)
+
+    if existing:
+        if existing["type"] == "Entity" and node_type != "Entity":
+            existing["type"] = node_type
+            existing["group"] = node_type
+        return
+
+    nodes_by_id[node_id] = {
+        "id": node_id,
+        "label": normalize_text(label) or node_id,
+        "type": node_type,
+        "group": node_type
+    }
+
+
+def add_relationship(relationships, nodes_by_id, source, relation, target, source_type="Entity", target_type="Entity"):
+    source = normalize_text(source)
+    target = normalize_text(target)
+    relation = normalize_relation(relation)
+
+    if not source or not target or source == target:
+        return
+
+    source_type = normalize_entity_type(source_type)
+    target_type = normalize_entity_type(target_type)
+
+    add_node(nodes_by_id, source, source_type)
+    add_node(nodes_by_id, target, target_type)
+
+    relationship = {
+        "source": source,
+        "source_type": source_type,
+        "relation": relation,
+        "target": target,
+        "target_type": target_type
+    }
+
+    if relationship not in relationships:
+        relationships.append(relationship)
 
 
 def build_graph_response(graph_data):
-    nodes = []
-    edges = []
+    nodes_by_id = {}
     relationships = []
 
-    if graph_data.get("nodes") is not None and graph_data.get("edges") is not None:
-        for node in graph_data.get("nodes", []):
-            if isinstance(node, dict):
-                node_id = normalize_text(node.get("id", node.get("label", "")))
-                label = normalize_text(node.get("label", node.get("id", "")))
-                node_type = node.get("type", "entity")
-            else:
-                node_id = normalize_text(str(node))
-                label = node_id
-                node_type = "entity"
+    for node in graph_data.get("nodes", []):
+        if isinstance(node, dict):
+            add_node(
+                nodes_by_id,
+                node.get("id") or node.get("label"),
+                node.get("type") or node.get("group") or "Entity",
+                node.get("label")
+            )
+        else:
+            add_node(nodes_by_id, node, "Entity")
 
-            if node_id:
-                nodes.append({"id": node_id, "label": label, "type": node_type})
+    for entity in graph_data.get("entities", []):
+        if isinstance(entity, dict):
+            add_node(
+                nodes_by_id,
+                entity.get("id") or entity.get("name") or entity.get("label"),
+                entity.get("type") or "Entity",
+                entity.get("label") or entity.get("name")
+            )
+        else:
+            add_node(nodes_by_id, entity, "Entity")
 
-        for idx, edge in enumerate(graph_data.get("edges", [])):
-            if not isinstance(edge, dict):
-                continue
+    raw_relationships = list(graph_data.get("relationships", []))
+    raw_relationships.extend(graph_data.get("edges", []))
+    raw_relationships.extend(graph_data.get("links", []))
 
-            source = normalize_text(edge.get("source", ""))
-            target = normalize_text(edge.get("target", ""))
-            label = normalize_relation(edge.get("label", ""))
-
-            if not source or not target:
-                continue
-
-            edges.append({
-                "id": f"edge-{idx}-{re.sub(r'\s+', '_', source)}-{re.sub(r'\s+', '_', target)}",
-                "source": source,
-                "target": target,
-                "label": label,
-                "type": edge.get("type", "smoothstep")
-            })
-
-        relationships = [
-            {
-                "source": normalize_text(rel.get("source", "")),
-                "relation": normalize_relation(rel.get("relation", rel.get("label", ""))),
-                "target": normalize_text(rel.get("target", ""))
-            }
-            for rel in graph_data.get("relationships", [])
-            if isinstance(rel, dict)
-        ]
-
-        return {"nodes": nodes, "edges": edges, "relationships": relationships}
-
-    entities = [normalize_text(entity) for entity in graph_data.get("entities", []) if normalize_text(entity)]
-    relationships = []
-
-    for rel in graph_data.get("relationships", []):
-        source = normalize_text(rel.get("source", ""))
-        relation = normalize_relation(rel.get("relation", ""))
-        target = normalize_text(rel.get("target", ""))
-
-        if not source or not relation or not target:
+    for rel in raw_relationships:
+        if not isinstance(rel, dict):
             continue
 
-        relationships.append({
-            "source": source,
-            "relation": relation,
-            "target": target
-        })
+        source = rel.get("source")
+        target = rel.get("target")
+        relation = rel.get("relation") or rel.get("type") or rel.get("label")
 
-        if source not in entities:
-            entities.append(source)
-        if target not in entities:
-            entities.append(target)
+        add_relationship(
+            relationships,
+            nodes_by_id,
+            source,
+            relation,
+            target,
+            rel.get("source_type") or rel.get("sourceType") or "Entity",
+            rel.get("target_type") or rel.get("targetType") or "Entity"
+        )
 
-    nodes = [{"id": entity, "label": entity, "type": "entity"} for entity in entities]
+    edges = []
+    links = []
 
     for idx, rel in enumerate(relationships):
-        edges.append({
-            "id": f"edge-{idx}-{re.sub(r'\s+', '_', rel['source'])}-{re.sub(r'\s+', '_', rel['target'])}",
+        edge = {
+            "id": f"edge-{idx}-{re.sub(r'\\s+', '_', rel['source'])}-{re.sub(r'\\s+', '_', rel['target'])}",
             "source": rel["source"],
             "target": rel["target"],
             "label": rel["relation"],
             "type": "smoothstep"
+        }
+        edges.append(edge)
+        links.append({
+            "source": rel["source"],
+            "target": rel["target"],
+            "label": rel["relation"]
         })
 
-    return {"nodes": nodes, "edges": edges, "relationships": relationships}
+    graph = {
+        "nodes": list(nodes_by_id.values()),
+        "edges": edges,
+        "links": links,
+        "relationships": relationships
+    }
+    graph["node_details"] = build_node_details(graph)
+    return graph
 
 
-def generate_heuristic_graph(document_text: str):
-    equipment_pattern = r"\b([A-Z][A-Za-z0-9\-\/]{2,})(?:\s+[A-Z][A-Za-z0-9\-\/]{2,})*\b"
-    issue_pattern = r"\b(failure|failed|leak|wear|overheating|inspection|maintenance|repair|audit|incident|shutdown|fault|breakdown|trip|hazard|leakage)\b"
+def collect_regex_entities(document_text: str):
+    patterns = {
+        "WorkOrder": [
+            r"\bWO[-\s]?\d{3,8}\b",
+            r"Work\s*Order\s*[:#-]?\s*([A-Z]{0,3}[-\s]?\d{3,8})"
+        ],
+        "Incident": [
+            r"\bIR[-\s]?\d{4}[-\s]?\d{2,6}\b",
+            r"Incident\s*[:#-]?\s*([A-Z]{0,3}[-\s]?\d{3,8}(?:[-\s]?\d{2,6})?)"
+        ],
+        "NearMiss": [
+            r"\bNM[-\s]?\d{3,8}\b",
+            r"Near\s*Miss\s*[:#-]?\s*([A-Z]{0,3}[-\s]?\d{3,8})"
+        ],
+        "Equipment": [
+            r"Equipment\s*(?:Tag|ID)?\s*[:#-]?\s*([A-Z]{1,5}[-]?\d{2,5}[A-Z]?)",
+            r"\b[A-Z]{1,5}[-]?\d{2,5}[A-Z]?\b"
+        ],
+        "Compliance": [
+            r"\bISO\s?\d{3,5}\b",
+            r"\bOSHA\s?\d{2,5}\b",
+            r"\bOISD[-\s]?\d{2,5}\b",
+            r"\bPESO\b",
+            r"\bFactory Act\b"
+        ],
+        "OEM": [
+            r"(?:OEM|Manufacturer|Manufactured By)\s*[:#-]?\s*([A-Z][A-Za-z0-9&.,\- ]{2,60})"
+        ],
+        "Person": [
+            r"(?:Prepared By|Reported By|Engineer|Technician|Inspector)\s*[:#-]?\s*([A-Z][A-Za-z]+(?:[ \t]+[A-Z][A-Za-z]+){1,3})"
+        ],
+        "Procedure": [
+            r"\bSOP[-\s]?\d{2,8}\b",
+            r"(?:Procedure|Safety Procedure)\s*[:#-]?\s*([A-Z][A-Za-z0-9\- ]{2,80})"
+        ],
+        "Inspection": [
+            r"\bINS[-\s]?\d{3,8}\b",
+            r"(?:Inspection|Audit)\s*(?:Report)?\s*[:#-]?\s*([A-Z]{0,3}[-\s]?\d{3,8})"
+        ],
+        "Location": [
+            r"(?:Location|Unit|Area)\s*[:#-]?\s*([A-Z][A-Za-z0-9\- ]{1,50})"
+        ]
+    }
 
     entities = []
-    relationships = []
+    seen = set()
 
-    for match in re.finditer(equipment_pattern, document_text):
-        entity = normalize_text(match.group(0))
-        if entity and entity not in entities and len(entity) > 2:
-            entities.append(entity)
+    for entity_type, entity_patterns in patterns.items():
+        for pattern in entity_patterns:
+            for match in re.finditer(pattern, document_text, flags=re.IGNORECASE):
+                value = match.group(1) if match.groups() else match.group(0)
+                value = normalize_text(value).rstrip(".,;:")
 
-    if not entities:
-        entities = [normalize_text(token) for token in re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b", document_text)][:10]
+                if not value:
+                    continue
 
-    sentences = re.split(r"(?<=[.!?])\s+", document_text)
+                if entity_type == "Equipment" and re.match(r"^(WO|IR|NM|ISO)[-\s]?\d+", value, flags=re.IGNORECASE):
+                    continue
 
-    for sentence in sentences:
-        sentence_entities = [normalize_text(m.group(0)) for m in re.finditer(equipment_pattern, sentence)]
-        sentence_issues = re.findall(issue_pattern, sentence, flags=re.IGNORECASE)
+                key = (value.upper(), entity_type)
+                if key in seen:
+                    continue
 
-        if sentence_entities and sentence_issues:
-            source = sentence_entities[0]
-            target = normalize_text(sentence_issues[0].title())
-            relation = "REFERENCED_WITH"
-
-            if re.search(r"fail|failure", sentence, flags=re.IGNORECASE):
-                relation = "FAILED_DUE_TO"
-            elif re.search(r"inspect|audit", sentence, flags=re.IGNORECASE):
-                relation = "INSPECTED_FOR"
-            elif re.search(r"maint|repair", sentence, flags=re.IGNORECASE):
-                relation = "HAS_MAINTENANCE_ACTIVITY"
-            elif re.search(r"overheat|shutdown|trip", sentence, flags=re.IGNORECASE):
-                relation = "IMPACTS_OPERATION"
-
-            relationships.append({
-                "source": source,
-                "relation": relation,
-                "target": target
-            })
-            continue
-
-        if len(sentence_entities) >= 2:
-            for i in range(len(sentence_entities) - 1):
-                relationships.append({
-                    "source": sentence_entities[i],
-                    "relation": "RELATED_TO",
-                    "target": sentence_entities[i + 1]
+                seen.add(key)
+                entities.append({
+                    "id": value,
+                    "type": entity_type
                 })
 
-    if not relationships and len(entities) >= 2:
-        for i in range(min(3, len(entities) - 1)):
-            relationships.append({
-                "source": entities[i],
-                "relation": "RELATED_TO",
-                "target": entities[i + 1]
-            })
+    return entities
 
-    if not entities and document_text.strip():
-        entities = list({normalize_text(token) for token in re.findall(r"\b[A-Z][a-z]+\b", document_text)})[:8]
 
-    return build_graph_response({
-        "entities": entities,
+def infer_relationships(entities, document_text):
+    relationships = []
+    nodes_by_id = {}
+
+    for entity in entities:
+        add_node(nodes_by_id, entity["id"], entity["type"])
+
+    by_type = {}
+    for entity in entities:
+        by_type.setdefault(entity["type"], []).append(entity["id"])
+
+    equipment = by_type.get("Equipment", [])
+
+    for equipment_id in equipment:
+        for work_order in by_type.get("WorkOrder", []):
+            add_relationship(relationships, nodes_by_id, work_order, "MAINTAINED", equipment_id, "WorkOrder", "Equipment")
+        for incident in by_type.get("Incident", []):
+            add_relationship(relationships, nodes_by_id, incident, "AFFECTED", equipment_id, "Incident", "Equipment")
+            add_relationship(relationships, nodes_by_id, equipment_id, "HAS_INCIDENT", incident, "Equipment", "Incident")
+        for compliance in by_type.get("Compliance", []):
+            add_relationship(relationships, nodes_by_id, equipment_id, "COMPLIES_WITH", compliance, "Equipment", "Compliance")
+        for oem in by_type.get("OEM", []):
+            add_relationship(relationships, nodes_by_id, equipment_id, "MANUFACTURED_BY", oem, "Equipment", "OEM")
+        for procedure in by_type.get("Procedure", []):
+            add_relationship(relationships, nodes_by_id, equipment_id, "HAS_PROCEDURE", procedure, "Equipment", "Procedure")
+        for inspection in by_type.get("Inspection", []):
+            add_relationship(relationships, nodes_by_id, equipment_id, "HAS_INSPECTION", inspection, "Equipment", "Inspection")
+        for location in by_type.get("Location", []):
+            add_relationship(relationships, nodes_by_id, equipment_id, "LOCATED_IN", location, "Equipment", "Location")
+
+    for person in by_type.get("Person", []):
+        for work_order in by_type.get("WorkOrder", []):
+            add_relationship(relationships, nodes_by_id, work_order, "AUTHORED_BY", person, "WorkOrder", "Person")
+        for incident in by_type.get("Incident", []):
+            add_relationship(relationships, nodes_by_id, incident, "REPORTED_BY", person, "Incident", "Person")
+
+    sentences = re.split(r"(?<=[.!?])\s+", document_text)
+    all_ids = [entity["id"] for entity in entities]
+
+    for sentence in sentences:
+        mentioned = [
+            entity_id for entity_id in all_ids
+            if entity_id.lower() in sentence.lower()
+        ]
+        if len(mentioned) < 2:
+            continue
+
+        source = mentioned[0]
+        for target in mentioned[1:3]:
+            source_type = nodes_by_id.get(source, {}).get("type", "Entity")
+            target_type = nodes_by_id.get(target, {}).get("type", "Entity")
+            add_relationship(relationships, nodes_by_id, source, "RELATED_TO", target, source_type, target_type)
+
+    return {
+        "nodes": list(nodes_by_id.values()),
         "relationships": relationships
-    })
+    }
 
 
-def generate_graph(document_text: str):
+def generate_heuristic_graph(document_text: str, document_name=None):
+    entities = collect_regex_entities(document_text)
+
+    if document_name:
+        entities.append({
+            "id": document_name,
+            "type": "Document"
+        })
+
+    graph_data = infer_relationships(entities, document_text)
+
+    if document_name:
+        nodes_by_id = {node["id"]: node for node in graph_data["nodes"]}
+        relationships = graph_data["relationships"]
+        add_node(nodes_by_id, document_name, "Document")
+
+        for node in list(nodes_by_id.values()):
+            if node["type"] != "Document":
+                add_relationship(
+                    relationships,
+                    nodes_by_id,
+                    node["id"],
+                    "REFERENCED_IN",
+                    document_name,
+                    node["type"],
+                    "Document"
+                )
+
+        graph_data = {
+            "nodes": list(nodes_by_id.values()),
+            "relationships": relationships
+        }
+
+    graph = build_graph_response(graph_data)
+
+    if document_name and not graph["nodes"]:
+        graph = build_graph_response({
+            "nodes": [{
+                "id": document_name,
+                "type": "Document"
+            }],
+            "relationships": []
+        })
+
+    return graph
+
+
+def generate_graph(document_text: str, document_name=None):
     client = get_groq_client()
 
     if client is None:
-        return generate_heuristic_graph(document_text)
+        return generate_heuristic_graph(document_text, document_name=document_name)
 
     prompt = load_graph_prompt(document_text)
 
     try:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
 
-        content = response.choices[0].message.content
-        raw_graph = parse_graph_response(content)
-
-        if not isinstance(raw_graph, dict):
-            raise ValueError("Graph extraction must return a JSON object")
-
+        raw_graph = parse_graph_response(response.choices[0].message.content)
         graph_response = build_graph_response(raw_graph)
+
         if not graph_response["nodes"] and not graph_response["edges"]:
-            return generate_heuristic_graph(document_text)
+            return generate_heuristic_graph(document_text, document_name=document_name)
+
+        if document_name:
+            fallback = generate_heuristic_graph(document_text, document_name=document_name)
+            known = {node["id"] for node in graph_response["nodes"]}
+            graph_response["nodes"].extend(node for node in fallback["nodes"] if node["id"] not in known)
+            graph_response["relationships"].extend(
+                rel for rel in fallback["relationships"]
+                if rel not in graph_response["relationships"]
+            )
+            graph_response = build_graph_response(graph_response)
 
         return graph_response
     except Exception:
-        return generate_heuristic_graph(document_text)
+        return generate_heuristic_graph(document_text, document_name=document_name)
 
 
-def save_graph(
-    graph_data,
-    document_id,
-    db
-):
-    relationships = graph_data.get(
-        "relationships",
-        []
-    )
+def save_graph(graph_data, document_id, db):
+    ensure_graph_schema(db)
+    relationships = graph_data.get("relationships", [])
 
     for rel in relationships:
+        source = fit_graph_field(rel["source"])
+        relation = fit_graph_field(rel["relation"])
+        target = fit_graph_field(rel["target"])
+        source_type = normalize_entity_type(rel.get("source_type"))
+        target_type = normalize_entity_type(rel.get("target_type"))
 
-        source = rel["source"]
-        relation = rel["relation"]
-        target = rel["target"]
-
-        existing = db.query(
-            GraphRelation
-        ).filter_by(
+        existing = db.query(GraphRelation).filter_by(
             document_id=document_id,
             source=source,
             relation=relation,
@@ -274,17 +471,45 @@ def save_graph(
         ).first()
 
         if existing is None:
-
             db.add(
                 GraphRelation(
                     document_id=document_id,
                     source=source,
+                    source_type=source_type,
                     relation=relation,
-                    target=target
+                    target=target,
+                    target_type=target_type
                 )
             )
+        else:
+            existing.source_type = existing.source_type or source_type
+            existing.target_type = existing.target_type or target_type
 
     db.commit()
+
+
+def ensure_graph_schema(db):
+    bind = db.get_bind()
+    inspector = inspect(bind)
+
+    if "graph_relations" not in inspector.get_table_names():
+        GraphRelation.__table__.create(bind=bind, checkfirst=True)
+        return
+
+    columns = {
+        column["name"]
+        for column in inspector.get_columns("graph_relations")
+    }
+
+    if "source_type" not in columns:
+        db.execute(
+            text("ALTER TABLE graph_relations ADD COLUMN source_type VARCHAR(100)")
+        )
+
+    if "target_type" not in columns:
+        db.execute(
+            text("ALTER TABLE graph_relations ADD COLUMN target_type VARCHAR(100)")
+        )
 
 
 def clear_graph(db):
@@ -292,112 +517,142 @@ def clear_graph(db):
     db.commit()
 
 
-def get_graph(
-    db,
-    document_id=None
-):
-
-    query = db.query(
-        GraphRelation
-    )
+def get_graph(db, document_id=None):
+    query = db.query(GraphRelation)
 
     if document_id:
-        query = query.filter_by(
-            document_id=document_id
-        )
+        query = query.filter_by(document_id=document_id)
 
     relations = query.all()
-
-    node_set = {}
-    edges = []
+    nodes_by_id = {}
+    relationships = []
 
     for rel in relations:
-
-        source = normalize_text(
-            rel.source
+        add_relationship(
+            relationships,
+            nodes_by_id,
+            rel.source,
+            rel.relation,
+            rel.target,
+            rel.source_type or "Entity",
+            rel.target_type or "Entity"
         )
 
-        target = normalize_text(
-            rel.target
-        )
+    graph = build_graph_response({
+        "nodes": list(nodes_by_id.values()),
+        "relationships": relationships
+    })
+    graph["node_details"] = build_node_details(graph)
+    return graph
 
-        if source not in node_set:
-            node_set[source] = {
-                "id": source,
-                "label": source,
-                "type": "entity"
-            }
 
-        if target not in node_set:
-            node_set[target] = {
-                "id": target,
-                "label": target,
-                "type": "entity"
-            }
+def build_node_details(graph):
+    details = {}
 
-        edges.append({
-            "id": (
-                f"edge-{len(edges)}"
-            ),
-            "source": source,
-            "target": target,
-            "label": rel.relation,
-            "type": "smoothstep"
-        })
+    for node in graph.get("nodes", []):
+        details[node["id"]] = {
+            "id": node["id"],
+            "label": node.get("label", node["id"]),
+            "type": node.get("type", "Entity"),
+            "connected_incidents": [],
+            "connected_work_orders": [],
+            "compliance": [],
+            "oem": [],
+            "procedures": [],
+            "inspections": [],
+            "locations": [],
+            "relationships": []
+        }
+
+    for rel in graph.get("relationships", []):
+        for side, other_side in (("source", "target"), ("target", "source")):
+            node_id = rel[side]
+            other_id = rel[other_side]
+            other_type = rel.get(f"{other_side}_type", "Entity")
+
+            if node_id not in details:
+                continue
+
+            details[node_id]["relationships"].append({
+                "relation": rel["relation"],
+                "node": other_id,
+                "type": other_type
+            })
+
+            if other_type == "Incident":
+                details[node_id]["connected_incidents"].append(other_id)
+            elif other_type == "WorkOrder":
+                details[node_id]["connected_work_orders"].append(other_id)
+            elif other_type == "Compliance":
+                details[node_id]["compliance"].append(other_id)
+            elif other_type == "OEM":
+                details[node_id]["oem"].append(other_id)
+            elif other_type == "Procedure":
+                details[node_id]["procedures"].append(other_id)
+            elif other_type == "Inspection":
+                details[node_id]["inspections"].append(other_id)
+            elif other_type == "Location":
+                details[node_id]["locations"].append(other_id)
+
+    for detail in details.values():
+        for key, value in detail.items():
+            if isinstance(value, list) and key != "relationships":
+                detail[key] = sorted(set(value))
+
+    return details
+
+
+def generate_graph_for_document(document_id, db):
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if document is None:
+        raise ValueError("Document not found")
+
+    chunks = (
+        db.query(DocumentChunk)
+        .filter(DocumentChunk.document_id == document_id)
+        .order_by(DocumentChunk.chunk_index.asc())
+        .all()
+    )
+
+    document_text = "\n\n".join(chunk.text for chunk in chunks)
+    graph_data = generate_graph(document_text, document_name=document.original_filename)
+    save_graph(graph_data, document_id=document.id, db=db)
+    graph = get_graph(db, document_id=document.id)
 
     return {
-        "nodes": list(
-            node_set.values()
-        ),
-        "edges": edges
+        "nodes": len(graph["nodes"]),
+        "edges": len(graph["edges"]),
+        "status": "success"
     }
 
-def get_entity_relations(
-    entity_name,
-    db
-):
 
-    relations = db.query(
-        GraphRelation
-    ).filter(
+def get_entity_relations(entity_name, db):
+    relations = db.query(GraphRelation).filter(
         (GraphRelation.source == entity_name)
         |
         (GraphRelation.target == entity_name)
     ).all()
 
-    results = []
-
-    for rel in relations:
-
-        results.append({
+    return [
+        {
             "source": rel.source,
+            "source_type": rel.source_type,
             "relation": rel.relation,
-            "target": rel.target
-        })
+            "target": rel.target,
+            "target_type": rel.target_type
+        }
+        for rel in relations
+    ]
 
-    return results
 
-def build_graph_context(
-    entity_name,
-    db
-):
-
-    relations = get_entity_relations(
-        entity_name,
-        db
-    )
+def build_graph_context(entity_name, db):
+    relations = get_entity_relations(entity_name, db)
 
     if not relations:
         return ""
 
-    lines = []
-
-    for rel in relations:
-
-        lines.append(
-            f"{rel['source']} "
-            f"{rel['relation']} "
-            f"{rel['target']}"
-        )
-
-    return "\n".join(lines)
+    return "\n".join(
+        f"{rel['source']} {rel['relation']} {rel['target']}"
+        for rel in relations
+    )

@@ -14,7 +14,10 @@ def get_index():
         return None
 
     if index is None:
-        from pinecone import Pinecone
+        try:
+            from pinecone import Pinecone
+        except ImportError:
+            return None
 
         pc = Pinecone(
             api_key=PINECONE_API_KEY

@@ -8,9 +8,19 @@ import GraphPanel from '../components/GraphPanel'
 import Header from '../components/Header'
 import MetricCard from '../components/MetricCard'
 
-const API_URL = import.meta.env.VITE_API_URL
-const GRAPH_PATH = import.meta.env.VITE_GRAPH_PATH
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
+const GRAPH_PATH = import.meta.env.VITE_GRAPH_PATH || '/graph'
 const DEFAULT_TEXT = import.meta.env.VITE_DEFAULT_DOCUMENT
+
+const DETAIL_GROUPS = [
+  ['Connected Incidents', 'connected_incidents'],
+  ['Connected Work Orders', 'connected_work_orders'],
+  ['Compliance', 'compliance'],
+  ['OEM', 'oem'],
+  ['Procedures', 'procedures'],
+  ['Inspections', 'inspections'],
+  ['Locations', 'locations'],
+]
 
 export default function Dashboard() {
   const [documentText, setDocumentText] = useState(DEFAULT_TEXT)
@@ -18,6 +28,8 @@ export default function Dashboard() {
   const [edges, setEdges] = useState([])
   const [documents, setDocuments] = useState([])
   const [selectedDocumentId, setSelectedDocumentId] = useState(null)
+  const [nodeDetails, setNodeDetails] = useState({})
+  const [selectedNodeId, setSelectedNodeId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('Ready to generate your industrial knowledge graph.')
 
@@ -41,12 +53,16 @@ export default function Dashboard() {
       const data = documentId ? await fetchGraph(documentId) : await extractGraph(documentText)
       setNodes(data.nodes || [])
       setEdges(data.edges || [])
+      setNodeDetails(data.node_details || {})
+      setSelectedNodeId(null)
       setSelectedDocumentId(documentId || null)
       setStatus(documentId ? 'Loaded saved graph from ingestion history.' : 'Graph successfully generated. Review the connected entities below.')
     } catch (error) {
       setStatus(`Graph load failed: ${error.message}`)
       setNodes([])
       setEdges([])
+      setNodeDetails({})
+      setSelectedNodeId(null)
     } finally {
       setLoading(false)
     }
@@ -59,6 +75,8 @@ export default function Dashboard() {
   const handleSelectDocument = useCallback(async (documentId) => {
     await loadGraph(documentId)
   }, [loadGraph])
+
+  const selectedNode = selectedNodeId ? nodeDetails[selectedNodeId] : null
 
   useEffect(() => {
     const selectedId = searchParams.get('document_id')
@@ -152,24 +170,53 @@ export default function Dashboard() {
             transition={{ duration: 0.35 }}
             className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]"
           >
-            <GraphPanel nodes={nodes} edges={edges} />
+            <GraphPanel nodes={nodes} edges={edges} onNodeSelect={setSelectedNodeId} />
 
-            <div className="space-y-5 rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/10">
-              <div className="rounded-3xl border border-white/10 bg-slate-950/75 p-5">
+            <div className="space-y-5 rounded-lg border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/10">
+              <div className="rounded-lg border border-white/10 bg-slate-950/75 p-5">
                 <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Graph output</p>
                 <p className="mt-4 text-2xl font-semibold text-white">
                   {selectedDocumentId ? 'Saved graph from history' : 'Visual JSON preview'}
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
-                <p className="font-semibold text-white">Rendered graph is compatible with React Flow.</p>
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
+                <p className="font-semibold text-white">Typed industrial graph</p>
                 <ul className="mt-4 space-y-3 text-slate-400">
-                  <li><strong>nodes</strong> are shown as graph vertices.</li>
-                  <li><strong>edges</strong> are shown as directed relationships.</li>
-                  <li>Each relation label is normalized for clean graph rendering.</li>
+                  <li>Equipment, people, work orders, incidents, compliance, OEM, procedures, inspections, locations, and documents are grouped by node type.</li>
+                  <li>Edges show operational relationships such as MAINTAINED, AFFECTED, COMPLIES_WITH, MANUFACTURED_BY, and REPORTED_BY.</li>
+                  <li>Click any node to inspect connected incidents, work orders, compliance references, OEMs, and procedures.</li>
                 </ul>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
+
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
+                <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Node details</p>
+                {selectedNode ? (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-lg font-semibold text-white">{selectedNode.type}: {selectedNode.label}</p>
+                      <p className="mt-1 text-slate-400">{selectedNode.relationships?.length || 0} direct relationships</p>
+                    </div>
+                    {DETAIL_GROUPS.map(([label, key]) => (
+                      <div key={key}>
+                        <p className="font-semibold text-white">{label}</p>
+                        {selectedNode[key]?.length ? (
+                          <ul className="mt-2 space-y-1 text-slate-400">
+                            {selectedNode[key].map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 text-slate-500">None found.</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-slate-400">Click a graph node to inspect its connected intelligence.</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
                 <p className="font-semibold text-white">Saved document graphs</p>
                 <p className="mt-2 text-slate-400">Select a previously ingested document to load its persisted knowledge graph.</p>
                 <div className="mt-4 space-y-3">

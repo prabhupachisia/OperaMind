@@ -30,8 +30,8 @@ def ensure_schema():
 
     if "graph_relations" in inspector.get_table_names():
         columns = [column["name"] for column in inspector.get_columns("graph_relations")]
-        if "document_id" not in columns:
-            with engine.begin() as connection:
+        with engine.begin() as connection:
+            if "document_id" not in columns:
                 connection.execute(
                     text("ALTER TABLE graph_relations ADD COLUMN document_id VARCHAR(36)")
                 )
@@ -39,6 +39,14 @@ def ensure_schema():
                     text(
                         "CREATE INDEX IF NOT EXISTS idx_graph_relations_document_id ON graph_relations(document_id)"
                     )
+                )
+            if "source_type" not in columns:
+                connection.execute(
+                    text("ALTER TABLE graph_relations ADD COLUMN source_type VARCHAR(100)")
+                )
+            if "target_type" not in columns:
+                connection.execute(
+                    text("ALTER TABLE graph_relations ADD COLUMN target_type VARCHAR(100)")
                 )
 
 
@@ -58,6 +66,12 @@ def home():
 app.register_blueprint(
     graph_bp,
     url_prefix="/graph"
+)
+
+app.register_blueprint(
+    graph_bp,
+    url_prefix="/api/graph",
+    name="api_graph"
 )
 
 # Chat / RAG routes

@@ -22,4 +22,8 @@ def get_extractor(file_path):
         from services.extractors.text_extractor import TextExtractor
         return TextExtractor()
 
+    elif ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}:
+        from services.extractors.image_extractor import ImageExtractor
+        return ImageExtractor()
+
     raise ValueError(f"Unsupported file type: {ext}")

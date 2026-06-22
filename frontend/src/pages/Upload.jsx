@@ -41,7 +41,7 @@ export default function Upload() {
           <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Document ingestion</p>
           <h2 className="text-3xl font-semibold text-white">Upload and classify heterogeneous industrial documents</h2>
           <p className="text-slate-400 leading-7">
-            Ingest PDFs, reports, drawings, inspection logs and work orders into a unified knowledge pipeline. The system extracts asset facts, creates a knowledge graph, and stores embeddings for fast retrieval.
+            Ingest PDFs, scanned forms, images, CSV files, JSON exports, reports, drawings, inspection logs and work orders into a unified knowledge pipeline. The system extracts text with OCR when needed, creates typed graph entities, and stores retrieval chunks for fast search.
           </p>
         </div>
       </div>
@@ -54,10 +54,13 @@ export default function Upload() {
               Select document
               <input
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.txt,.csv,.json,.png,.jpg,.jpeg,.tif,.tiff,.bmp"
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
                 className="mt-3 block w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15"
               />
+              <span className="mt-2 block text-xs text-slate-500">
+                Supported: PDF, scanned image files, TXT, CSV, and JSON.
+              </span>
             </label>
 
             <label className="block text-sm font-medium text-slate-200">
@@ -99,6 +102,10 @@ export default function Upload() {
               <p>Chunks: {result.chunk_count}</p>
               <p>Graph nodes: {result.graph_nodes}</p>
               <p>Graph edges: {result.graph_edges}</p>
+              {result.graph_error ? (
+                <p className="text-amber-300">Graph warning: {result.graph_error}</p>
+              ) : null}
+              <p className="text-slate-400">Typed entities include equipment, work orders, incidents, compliance, OEM, procedures, inspections, people, locations, and document references.</p>
             </div>
           ) : null}
         </div>

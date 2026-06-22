@@ -71,8 +71,9 @@ export async function sendChatQuery(query) {
 }
 
 export async function fetchGraph(documentId) {
-  const query = documentId ? `?document_id=${encodeURIComponent(documentId)}` : ''
-  const endpoint = buildEndpoint(`${GRAPH_PATH}${query}`)
+  const endpoint = documentId
+    ? buildEndpoint(`${GRAPH_PATH}/document/${encodeURIComponent(documentId)}`)
+    : buildEndpoint(GRAPH_PATH)
 
   const response = await fetch(endpoint, {
     method: 'GET',
@@ -112,6 +113,25 @@ export async function fetchCompliance(documentId) {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.error || 'Compliance analysis failed')
+  }
+
+  return response.json()
+}
+
+export async function generateDocumentGraph(documentId) {
+  const endpoint = buildEndpoint(`${GRAPH_PATH}/generate`)
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ document_id: documentId }),
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error || 'Document graph generation failed')
   }
 
   return response.json()

@@ -14,12 +14,12 @@ export default function Home() {
       <section className="grid gap-6 lg:grid-cols-3">
         {[
           {
-            title: 'Document ingestion',
-            description: 'Upload PDFs, reports, drawings and records to create a single source of truth.',
+            title: 'Universal ingestion',
+            description: 'Process PDFs, scanned forms, images, CSV, JSON, procedures, work orders, inspection reports and operating documents.',
           },
           {
-            title: 'Knowledge graph',
-            description: 'Extract entities and relationships across assets, systems and procedures.',
+            title: 'Knowledge graph agent',
+            description: 'Extract equipment, work orders, incidents, compliance references, OEMs, people, procedures, inspections and locations.',
           },
           {
             title: 'AI copilot',
@@ -34,13 +34,30 @@ export default function Home() {
         ))}
       </section>
 
+      <section className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
+        <h3 className="text-xl font-semibold text-white">Challenge coverage</h3>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {[
+            'RAG-powered expert copilot with source citations and confidence scores.',
+            'Automatic graph generation during upload, with typed nodes and operational relationships.',
+            'OCR support for scanned PDFs and image-based records.',
+            'Compliance intelligence for procedure, inspection, maintenance and evidence gaps.',
+            'Incident similarity engine for recurring failures, near misses and lessons learned.',
+            'History view with document name, chunk count, graph node count and graph edge count.',
+          ].map((item) => (
+            <p key={item} className="rounded-3xl bg-slate-900/80 p-4 text-sm text-slate-300">{item}</p>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
           <h3 className="text-xl font-semibold text-white">Why this matters</h3>
           <ul className="mt-4 space-y-3 text-slate-400">
-            <li>Reduce time spent searching for disconnected documents.</li>
-            <li>Preserve retiring operational knowledge in a structured graph.</li>
-            <li>Enable safer, faster, and more consistent decisions on the plant floor.</li>
+            <li>Reduce the 35% of working time often lost to searching, clarifying instructions and recreating existing documents.</li>
+            <li>Connect disconnected document systems across engineering drawings, work orders, SOPs, inspections and regulatory submissions.</li>
+            <li>Preserve retiring operational knowledge in a searchable, structured graph.</li>
+            <li>Improve maintenance decisions by exposing complete equipment history and repeated failure patterns.</li>
           </ul>
         </div>
         <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">

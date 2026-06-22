@@ -10,7 +10,10 @@ def get_groq_client():
         return None
 
     if client is None:
-        from groq import Groq
+        try:
+            from groq import Groq
+        except ImportError:
+            return None
 
         client = Groq(
             api_key=GROQ_API_KEY

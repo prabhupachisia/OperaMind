@@ -144,21 +144,32 @@ def process_document(
         page.get("text", "") for page in pages
     )
 
-    graph_data = generate_graph(
-        document_text
-    )
+    graph_data = {
+        "nodes": [],
+        "edges": []
+    }
+    graph_error = None
 
-    save_graph(
-        graph_data=graph_data,
-        document_id=document.id,
-        db=db
-    )
+    try:
+        graph_data = generate_graph(
+            document_text,
+            document_name=original_filename
+        )
+
+        save_graph(
+            graph_data=graph_data,
+            document_id=document.id,
+            db=db
+        )
+    except Exception as error:
+        db.rollback()
+        graph_error = str(error)
 
     # --------------------------------------------------
     # Return Summary
     # --------------------------------------------------
 
-    return {
+    result = {
         "document_id": document.id,
         "filename": filename,
         "original_filename": original_filename,
@@ -171,3 +182,8 @@ def process_document(
             graph_data.get("edges", [])
         )
     }
+
+    if graph_error:
+        result["graph_error"] = graph_error
+
+    return result
