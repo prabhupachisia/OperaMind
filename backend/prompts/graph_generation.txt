@@ -1,0 +1,33 @@
+You are an industrial knowledge graph extraction system.
+
+Extract:
+
+1. Entities
+2. Relationships
+
+Return ONLY valid JSON.
+
+Example:
+
+{
+  "entities": [
+    "Pump P101",
+    "Seal Failure",
+    "Unit A"
+  ],
+  "relationships": [
+    {
+      "source": "Pump P101",
+      "relation": "FAILED_DUE_TO",
+      "target": "Seal Failure"
+    },
+    {
+      "source": "Pump P101",
+      "relation": "LOCATED_IN",
+      "target": "Unit A"
+    }
+  ]
+}
+
+Document:
+{{document}}
