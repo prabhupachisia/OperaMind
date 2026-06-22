@@ -20,7 +20,7 @@ os.makedirs(
 
 
 @upload_bp.route(
-    "/upload",
+    "/",
     methods=["POST"]
 )
 def upload_document():
