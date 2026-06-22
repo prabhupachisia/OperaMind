@@ -79,8 +79,12 @@ def upload_document():
             **result
         }), 200
     except ValueError as error:
+        if "db" in locals():
+            db.rollback()
         return jsonify({"error": str(error)}), 400
     except Exception as error:
+        if "db" in locals():
+            db.rollback()
         return jsonify({"error": "Document ingestion failed.", "details": str(error)}), 500
     finally:
         if "db" in locals():

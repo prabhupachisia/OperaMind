@@ -1,5 +1,4 @@
 import os
-from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = os.getenv(
     "EMBEDDING_MODEL",
@@ -13,6 +12,8 @@ def get_model():
     global model
 
     if model is None:
+        from sentence_transformers import SentenceTransformer
+
         model = SentenceTransformer(MODEL_NAME)
 
     return model
