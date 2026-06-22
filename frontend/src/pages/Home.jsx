@@ -72,8 +72,7 @@ export default function Home() {
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Operations command center</p>
           <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-            AI-powered industrial knowledge intelligence for fragmented plant records.
-          </h1>
+AI-powered platform for unified industrial knowledge, asset intelligence, and operational decision support.          </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
             OperaMind ingests engineering files, maintenance records, safety procedures, inspection reports, operating instructions, and compliance evidence, then turns them into a queryable knowledge base and connected graph.
           </p>

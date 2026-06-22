@@ -5,7 +5,6 @@ import Graph from './pages/Graph'
 import Upload from './pages/Upload'
 import Chat from './pages/Chat'
 import History from './pages/History'
-import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 import Compliance from './pages/Compliance'
 import Incidents from './pages/Incidents'
@@ -22,7 +21,6 @@ function App() {
           <Route path="compliance" element={<Compliance />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="history" element={<History />} />
-          <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
