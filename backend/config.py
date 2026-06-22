@@ -12,4 +12,7 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 
-UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER")
+UPLOAD_FOLDER = os.getenv(
+    "UPLOAD_FOLDER",
+    "uploads"
+)

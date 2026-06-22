@@ -1,6 +1,6 @@
 import os
 import uuid
-
+from config import UPLOAD_FOLDER
 from flask import Blueprint
 from flask import request
 from flask import jsonify
