@@ -7,7 +7,7 @@ from flask import jsonify
 
 from config import UPLOAD_FOLDER
 
-from services.pdf_service import extract_text_from_pdf
+from services.pdf_services import extract_text_from_pdf
 from services.chunking_service import chunk_text
 
 upload_bp = Blueprint(
