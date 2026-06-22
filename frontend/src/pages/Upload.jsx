@@ -1,10 +1,13 @@
+import { CheckCircle2, FileUp, GitBranch, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { uploadDocument } from '../services/api'
+
+const documentTypes = ['engineering', 'inspection', 'maintenance', 'procedure', 'incident', 'compliance', 'operations']
 
 export default function Upload() {
   const [file, setFile] = useState(null)
   const [documentType, setDocumentType] = useState('engineering')
-  const [status, setStatus] = useState('Ready to ingest industrial documents.')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -19,97 +22,117 @@ export default function Upload() {
 
     setLoading(true)
     setError(null)
-    setStatus('Uploading and processing document...')
+    setResult(null)
 
     try {
       const response = await uploadDocument(file, documentType)
       setResult(response)
-      setStatus('Document ingested successfully. Graph and embeddings saved.')
     } catch (err) {
       setError(err.message)
-      setStatus('Upload failed. Please try again.')
-      setResult(null)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="grid gap-8">
-      <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/20">
-        <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Document ingestion</p>
-          <h2 className="text-3xl font-semibold text-white">Upload and classify heterogeneous industrial documents</h2>
-          <p className="text-slate-400 leading-7">
-            Ingest PDFs, scanned forms, images, CSV files, JSON exports, reports, drawings, inspection logs and work orders into a unified knowledge pipeline. The system extracts text with OCR when needed, creates typed graph entities, and stores retrieval chunks for fast search.
-          </p>
-        </div>
-      </div>
+    <div className="grid gap-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Document ingestion</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Upload industrial records into the knowledge pipeline</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+          Send files to the backend for text extraction, OCR fallback, chunking, graph generation, and retrieval indexing.
+        </p>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
-        <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Upload details</p>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-            <label className="block text-sm font-medium text-slate-200">
-              Select document
-              <input
-                type="file"
-                accept=".pdf,.txt,.csv,.json,.png,.jpg,.jpeg,.tif,.tiff,.bmp"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-                className="mt-3 block w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15"
-              />
-              <span className="mt-2 block text-xs text-slate-500">
-                Supported: PDF, scanned image files, TXT, CSV, and JSON.
-              </span>
-            </label>
-
-            <label className="block text-sm font-medium text-slate-200">
-              Document type
-              <input
-                type="text"
-                value={documentType}
-                onChange={(event) => setDocumentType(event.target.value)}
-                placeholder="e.g. inspection report"
-                className="mt-3 block w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15"
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-3xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? 'Ingesting document...' : 'Upload and ingest'}
-            </button>
-          </form>
-        </div>
-
-        <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Ingestion status</p>
-          <p className="mt-4 text-slate-400">{status}</p>
-
-          {error ? (
-            <div className="mt-5 rounded-3xl bg-rose-500/10 border border-rose-400/15 p-4 text-sm text-rose-200">
-              {error}
+      <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+              <FileUp size={20} />
+            </span>
+            <div>
+              <h2 className="font-semibold text-slate-950">Upload details</h2>
+              <p className="text-sm text-slate-500">PDF, image, text, CSV, and JSON files are accepted.</p>
             </div>
-          ) : null}
+          </div>
+
+          <label className="mt-5 block text-sm font-semibold text-slate-950">
+            File
+            <input
+              type="file"
+              accept=".pdf,.txt,.csv,.json,.png,.jpg,.jpeg,.tif,.tiff,.bmp"
+              onChange={(event) => setFile(event.target.files?.[0] || null)}
+              className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-950/10"
+            />
+          </label>
+
+          <label className="mt-5 block text-sm font-semibold text-slate-950">
+            Document type
+            <select
+              value={documentType}
+              onChange={(event) => setDocumentType(event.target.value)}
+              className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10"
+            >
+              {documentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <UploadCloud size={18} />
+            {loading ? 'Processing document' : 'Upload and ingest'}
+          </button>
+
+          {error ? <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p> : null}
+        </form>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+              <CheckCircle2 size={20} />
+            </span>
+            <div>
+              <h2 className="font-semibold text-slate-950">Ingestion result</h2>
+              <p className="text-sm text-slate-500">{result ? 'Document processed by the backend.' : 'Result details appear after upload.'}</p>
+            </div>
+          </div>
 
           {result ? (
-            <div className="mt-5 space-y-3 rounded-3xl border border-white/10 bg-slate-950/80 p-4 text-slate-200">
-              <p className="text-sm font-semibold text-white">Upload summary</p>
-              <p>File: {result.original_filename}</p>
-              <p>Document type: {result.document_type}</p>
-              <p>Chunks: {result.chunk_count}</p>
-              <p>Graph nodes: {result.graph_nodes}</p>
-              <p>Graph edges: {result.graph_edges}</p>
-              {result.graph_error ? (
-                <p className="text-amber-300">Graph warning: {result.graph_error}</p>
+            <div className="mt-5">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-950">{result.original_filename}</p>
+                <p className="mt-1 text-sm text-slate-500">{result.document_type}</p>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {[
+                  ['Chunks', result.chunk_count],
+                  ['Nodes', result.graph_nodes],
+                  ['Edges', result.graph_edges],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-md border border-slate-200 p-3">
+                    <p className="text-xl font-semibold text-slate-950">{value || 0}</p>
+                    <p className="text-xs font-medium uppercase text-slate-500">{label}</p>
+                  </div>
+                ))}
+              </div>
+              {result.graph_error ? <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{result.graph_error}</p> : null}
+              {result.document_id ? (
+                <Link to={`/graph?document_id=${encodeURIComponent(result.document_id)}`} className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
+                  <GitBranch size={17} />
+                  Open generated graph
+                </Link>
               ) : null}
-              <p className="text-slate-400">Typed entities include equipment, work orders, incidents, compliance, OEM, procedures, inspections, people, locations, and document references.</p>
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-5 rounded-md border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+              Upload a document to see chunk counts, graph entities, graph relationships, and processing warnings.
+            </div>
+          )}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

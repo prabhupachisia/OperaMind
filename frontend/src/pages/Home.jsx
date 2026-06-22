@@ -1,74 +1,157 @@
+import { Activity, ArrowRight, Bot, FileText, GitBranch, ShieldCheck, Upload } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { fetchHistory } from '../services/api'
+
+const workstreams = [
+  {
+    title: 'Ingest records',
+    description: 'Upload PDFs and operational files into the extraction, chunking, OCR, and graph pipeline.',
+    path: '/upload',
+    icon: Upload,
+  },
+  {
+    title: 'Explore graph',
+    description: 'Inspect equipment, incidents, procedures, OEMs, locations, and operational relationships.',
+    path: '/graph',
+    icon: GitBranch,
+  },
+  {
+    title: 'Ask copilot',
+    description: 'Query the knowledge base using source-backed retrieval across uploaded documents.',
+    path: '/chat',
+    icon: Bot,
+  },
+  {
+    title: 'Audit readiness',
+    description: 'Review compliance evidence, missing procedures, inspection gaps, and supporting snippets.',
+    path: '/compliance',
+    icon: ShieldCheck,
+  },
+]
+
 export default function Home() {
+  const [documents, setDocuments] = useState([])
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const history = await fetchHistory()
+        setDocuments(history.documents || [])
+      } catch (err) {
+        setError(err.message)
+      }
+    }
+
+    load()
+  }, [])
+
+  const metrics = useMemo(
+    () => ({
+      documents: documents.length,
+      chunks: documents.reduce((sum, doc) => sum + Number(doc.chunk_count || 0), 0),
+      nodes: documents.reduce((sum, doc) => sum + Number(doc.graph_nodes || 0), 0),
+      edges: documents.reduce((sum, doc) => sum + Number(doc.graph_edges || 0), 0),
+    }),
+    [documents],
+  )
+
+  const latest = documents.slice(0, 4)
+
   return (
-    <div className="grid gap-8">
-      <section className="rounded-4xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/20">
-        <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Problem statement</p>
-          <h2 className="text-3xl font-semibold text-white">From knowledge fragmentation to a unified operations brain</h2>
-          <p className="max-w-3xl text-slate-400 leading-7">
-            Build an AI platform that ingests heterogeneous industrial documents, extracts equipment and operations intelligence, and makes it instantly queryable across teams and devices.
+    <div className="grid gap-6">
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Operations command center</p>
+          <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+            Industrial knowledge, graph intelligence, and document retrieval in one console.
+          </h1>
+          <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
+            OperaMind converts maintenance records, inspections, procedures, incidents, and compliance evidence into an operational knowledge base your teams can search, inspect, and act on.
           </p>
-        </div>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-3">
-        {[
-          {
-            title: 'Universal ingestion',
-            description: 'Process PDFs, scanned forms, images, CSV, JSON, procedures, work orders, inspection reports and operating documents.',
-          },
-          {
-            title: 'Knowledge graph agent',
-            description: 'Extract equipment, work orders, incidents, compliance references, OEMs, people, procedures, inspections and locations.',
-          },
-          {
-            title: 'AI copilot',
-            description: 'Ask operational questions with citations, confidence and traceability.',
-          },
-        ].map((card) => (
-          <div key={card.title} className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-            <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">{card.title}</p>
-            <p className="mt-4 text-lg font-semibold text-white">{card.title}</p>
-            <p className="mt-3 text-slate-400">{card.description}</p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link to="/upload" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800">
+              Start ingestion
+              <ArrowRight size={17} />
+            </Link>
+            <Link to="/graph" className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
+              Open graph
+              <GitBranch size={17} />
+            </Link>
           </div>
-        ))}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-950 p-6 text-white shadow-sm sm:p-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Current corpus</p>
+              <h2 className="mt-2 text-2xl font-semibold">Knowledge base status</h2>
+            </div>
+            <Activity className="text-emerald-300" size={26} />
+          </div>
+          {error ? <p className="mt-5 rounded-md border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-100">{error}</p> : null}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {[
+              ['Documents', metrics.documents],
+              ['Chunks', metrics.chunks],
+              ['Graph nodes', metrics.nodes],
+              ['Graph edges', metrics.edges],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-md border border-white/10 bg-white/5 p-4">
+                <p className="text-2xl font-semibold">{value}</p>
+                <p className="mt-1 text-xs font-medium uppercase text-slate-400">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
-        <h3 className="text-xl font-semibold text-white">Challenge coverage</h3>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {[
-            'RAG-powered expert copilot with source citations and confidence scores.',
-            'Automatic graph generation during upload, with typed nodes and operational relationships.',
-            'OCR support for scanned PDFs and image-based records.',
-            'Compliance intelligence for procedure, inspection, maintenance and evidence gaps.',
-            'Incident similarity engine for recurring failures, near misses and lessons learned.',
-            'History view with document name, chunk count, graph node count and graph edge count.',
-          ].map((item) => (
-            <p key={item} className="rounded-3xl bg-slate-900/80 p-4 text-sm text-slate-300">{item}</p>
-          ))}
-        </div>
+      <section className="grid gap-4 lg:grid-cols-4">
+        {workstreams.map((item) => {
+          const Icon = item.icon
+          return (
+            <Link key={item.title} to={item.path} className="group rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-700 group-hover:bg-slate-950 group-hover:text-white">
+                <Icon size={20} />
+              </span>
+              <h3 className="mt-5 text-lg font-semibold text-slate-950">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
+            </Link>
+          )
+        })}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
-          <h3 className="text-xl font-semibold text-white">Why this matters</h3>
-          <ul className="mt-4 space-y-3 text-slate-400">
-            <li>Reduce the 35% of working time often lost to searching, clarifying instructions and recreating existing documents.</li>
-            <li>Connect disconnected document systems across engineering drawings, work orders, SOPs, inspections and regulatory submissions.</li>
-            <li>Preserve retiring operational knowledge in a searchable, structured graph.</li>
-            <li>Improve maintenance decisions by exposing complete equipment history and repeated failure patterns.</li>
-          </ul>
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent ingestion</p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-950">Latest uploaded records</h2>
+          </div>
+          <Link to="/history" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+            View history
+            <ArrowRight size={16} />
+          </Link>
         </div>
-        <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
-          <h3 className="text-xl font-semibold text-white">How to use the app</h3>
-          <ol className="mt-4 space-y-3 text-slate-400 list-decimal list-inside">
-            <li>Upload documents from your corpus.</li>
-            <li>Generate and explore the knowledge graph.</li>
-            <li>Ask the AI copilot operational queries.</li>
-            <li>Review history and saved insights.</li>
-          </ol>
-        </div>
+        {latest.length === 0 ? (
+          <div className="p-6 text-sm text-slate-500">No uploaded documents yet. Use ingestion to build the knowledge base.</div>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {latest.map((doc) => (
+              <div key={doc.document_id} className="grid gap-3 p-5 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-950">{doc.original_filename || doc.filename}</p>
+                  <p className="mt-1 text-sm text-slate-500">{doc.document_type || 'Document'} · {new Date(doc.uploaded_at).toLocaleString()}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase text-slate-600">
+                  <span className="rounded-md bg-slate-100 px-2.5 py-1">{doc.chunk_count || 0} chunks</span>
+                  <span className="rounded-md bg-slate-100 px-2.5 py-1">{doc.graph_nodes || 0} nodes</span>
+                  <span className="rounded-md bg-slate-100 px-2.5 py-1">{doc.graph_edges || 0} edges</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

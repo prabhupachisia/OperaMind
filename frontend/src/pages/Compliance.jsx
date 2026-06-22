@@ -1,3 +1,4 @@
+import { ClipboardCheck, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchCompliance, fetchHistory } from '../services/api'
 
@@ -44,77 +45,95 @@ export default function Compliance() {
   }
 
   return (
-    <div className="grid gap-8">
-      <section className="rounded-4xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/20">
-        <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Compliance Intelligence</p>
-        <h2 className="mt-4 text-3xl font-semibold text-white">Find missing procedures, inspection evidence, and audit gaps</h2>
-        <p className="mt-4 max-w-3xl text-slate-400 leading-7">
-          Analyze uploaded procedures and records against core compliance evidence categories, with source snippets for audit review.
-        </p>
+    <div className="grid gap-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-slate-950 text-white">
+            <ShieldCheck size={22} />
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Compliance intelligence</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Evidence readiness and audit gaps</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Analyze uploaded records for procedure, inspection, maintenance, and safety evidence coverage.</p>
+          </div>
+        </div>
       </section>
 
-      <section className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-        <label className="block text-sm font-medium text-slate-200">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <label className="block text-sm font-semibold text-slate-950">
           Scope
           <select
             value={selectedDocumentId}
             onChange={handleDocumentChange}
-            className="mt-3 block w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/15"
+            className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10"
           >
             <option value="">All uploaded documents</option>
             {documents.map((doc) => (
-              <option key={doc.document_id} value={doc.document_id}>
-                {doc.original_filename || doc.filename}
-              </option>
+              <option key={doc.document_id} value={doc.document_id}>{doc.original_filename || doc.filename}</option>
             ))}
           </select>
         </label>
       </section>
 
       {loading ? (
-        <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-8 text-slate-400">Analyzing compliance evidence...</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">Analyzing compliance evidence...</div>
       ) : error ? (
-        <div className="rounded-4xl border border-white/10 bg-rose-500/10 p-8 text-rose-200">{error}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 shadow-sm">{error}</div>
       ) : report ? (
-        <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6">
-            <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Readiness score</p>
-            <p className="mt-4 text-5xl font-semibold text-white">{Math.round(report.score * 100)}%</p>
-            <div className="mt-6 space-y-3">
-              {report.checks.map((check) => (
-                <div key={check.id} className="rounded-3xl bg-slate-900/80 p-4 text-sm">
-                  <p className={check.passed ? 'text-emerald-300' : 'text-rose-300'}>{check.passed ? 'Pass' : 'Gap'}</p>
-                  <p className="mt-1 font-semibold text-white">{check.label}</p>
+        <section className="grid gap-5 lg:grid-cols-[340px_1fr]">
+          <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Readiness</p>
+            <p className="mt-3 text-5xl font-semibold text-slate-950">{Math.round((report.score || 0) * 100)}%</p>
+            <div className="mt-5 space-y-2">
+              {(report.checks || []).map((check) => (
+                <div key={check.id} className="flex items-start gap-3 rounded-md border border-slate-200 p-3">
+                  {check.passed ? <ShieldCheck size={18} className="mt-0.5 text-emerald-600" /> : <ShieldAlert size={18} className="mt-0.5 text-rose-600" />}
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">{check.label}</p>
+                    <p className="text-xs font-medium uppercase text-slate-500">{check.passed ? 'Pass' : 'Gap'}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </aside>
 
-          <div className="space-y-5">
-            <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6">
-              <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Gaps</p>
-              <div className="mt-4 space-y-3 text-slate-300">
-                {report.gaps.length === 0 ? 'No compliance gaps detected in the selected scope.' : report.gaps.map((gap) => (
-                  <p key={gap.id} className="rounded-3xl bg-slate-900/80 p-4">{gap.recommendation}</p>
-                ))}
+          <div className="grid gap-5">
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={18} className="text-slate-500" />
+                <h2 className="font-semibold text-slate-950">Gaps and recommendations</h2>
               </div>
-            </div>
+              <div className="mt-4 grid gap-3">
+                {(report.gaps || []).length === 0 ? (
+                  <p className="text-sm text-slate-500">No compliance gaps detected in the selected scope.</p>
+                ) : (
+                  report.gaps.map((gap) => (
+                    <p key={gap.id} className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">{gap.recommendation}</p>
+                  ))
+                )}
+              </div>
+            </section>
 
-            <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-6">
-              <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Evidence references</p>
-              <div className="mt-4 space-y-3">
-                {report.evidence.length === 0 ? (
-                  <p className="text-slate-400">No evidence snippets found yet.</p>
-                ) : report.evidence.map((item) => (
-                  <div key={`${item.document_id}-${item.page}-${item.snippet}`} className="rounded-3xl bg-slate-900/80 p-4 text-sm text-slate-300">
-                    <p className="font-semibold text-white">{item.source} {item.page ? `p.${item.page}` : ''}</p>
-                    <p className="mt-2">{item.snippet}</p>
-                  </div>
-                ))}
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck size={18} className="text-slate-500" />
+                <h2 className="font-semibold text-slate-950">Evidence references</h2>
               </div>
-            </div>
+              <div className="mt-4 grid gap-3">
+                {(report.evidence || []).length === 0 ? (
+                  <p className="text-sm text-slate-500">No evidence snippets found yet.</p>
+                ) : (
+                  report.evidence.map((item) => (
+                    <div key={`${item.document_id}-${item.page}-${item.snippet}`} className="rounded-md border border-slate-200 p-4">
+                      <p className="font-semibold text-slate-950">{item.source} {item.page ? `p.${item.page}` : ''}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.snippet}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           </div>
-        </div>
+        </section>
       ) : null}
     </div>
   )

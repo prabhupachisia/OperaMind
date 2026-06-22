@@ -1,3 +1,4 @@
+import { CalendarClock, GitBranch } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchHistory } from '../services/api'
@@ -23,64 +24,61 @@ export default function History() {
   }, [])
 
   return (
-    <div className="grid gap-8">
-      <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/20">
-        <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">History</p>
-          <h2 className="text-3xl font-semibold text-white">Saved graphs and document ingestion history</h2>
-          <p className="text-slate-400 leading-7">
-            Review uploaded files, extracted knowledge graphs, and asset intelligence snapshots over time.
-          </p>
-        </div>
-      </div>
+    <div className="grid gap-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">History</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Ingested documents and saved graphs</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Review uploaded files, generated graph counts, and direct graph workspace links.</p>
+      </section>
 
-      {loading ? (
-        <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-8 shadow-xl shadow-slate-950/10 text-slate-400">
-          Loading history...
-        </div>
-      ) : error ? (
-        <div className="rounded-4xl border border-white/10 bg-rose-500/10 p-8 shadow-xl shadow-slate-950/10 text-rose-200">
-          {error}
-        </div>
-      ) : documents.length === 0 ? (
-        <div className="rounded-4xl border border-white/10 bg-slate-950/75 p-8 shadow-xl shadow-slate-950/10 text-slate-400">
-          No ingested documents found yet. Upload a document to start building your knowledge base.
-        </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {documents.map((doc) => (
-            <div key={doc.document_id} className="rounded-4xl border border-white/10 bg-slate-950/75 p-6 shadow-xl shadow-slate-950/10">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">{doc.document_type || 'Document'}</p>
-                  <h3 className="mt-4 text-xl font-semibold text-white">{doc.original_filename || doc.filename}</h3>
-                  <p className="mt-3 text-slate-400">Uploaded: {new Date(doc.uploaded_at).toLocaleString()}</p>
-                </div>
-                <Link
-                  to={`/graph?document_id=${encodeURIComponent(doc.document_id)}`}
-                  className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/20"
-                >
-                  View graph
-                </Link>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-3xl bg-slate-900/80 p-3 text-sm text-slate-200">
-                  <p className="font-semibold">Chunks</p>
-                  <p className="mt-2 text-cyan-300">{doc.chunk_count}</p>
-                </div>
-                <div className="rounded-3xl bg-slate-900/80 p-3 text-sm text-slate-200">
-                  <p className="font-semibold">Graph nodes</p>
-                  <p className="mt-2 text-sky-300">{doc.graph_nodes}</p>
-                </div>
-                <div className="rounded-3xl bg-slate-900/80 p-3 text-sm text-slate-200">
-                  <p className="font-semibold">Graph edges</p>
-                  <p className="mt-2 text-cyan-300">{doc.graph_edges}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        {loading ? (
+          <div className="p-6 text-sm text-slate-500">Loading history...</div>
+        ) : error ? (
+          <div className="m-5 rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>
+        ) : documents.length === 0 ? (
+          <div className="p-6 text-sm text-slate-500">No ingested documents found yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Document</th>
+                  <th className="px-5 py-3">Type</th>
+                  <th className="px-5 py-3">Uploaded</th>
+                  <th className="px-5 py-3">Chunks</th>
+                  <th className="px-5 py-3">Graph</th>
+                  <th className="px-5 py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {documents.map((doc) => (
+                  <tr key={doc.document_id} className="hover:bg-slate-50">
+                    <td className="max-w-[360px] px-5 py-4">
+                      <p className="truncate font-semibold text-slate-950">{doc.original_filename || doc.filename}</p>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600">{doc.document_type || 'Document'}</td>
+                    <td className="px-5 py-4 text-slate-600">
+                      <span className="inline-flex items-center gap-2">
+                        <CalendarClock size={15} />
+                        {new Date(doc.uploaded_at).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-950">{doc.chunk_count || 0}</td>
+                    <td className="px-5 py-4 text-slate-600">{doc.graph_nodes || 0} nodes · {doc.graph_edges || 0} edges</td>
+                    <td className="px-5 py-4">
+                      <Link to={`/graph?document_id=${encodeURIComponent(doc.document_id)}`} className="inline-flex h-9 items-center gap-2 rounded-md bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-slate-800">
+                        <GitBranch size={15} />
+                        View graph
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

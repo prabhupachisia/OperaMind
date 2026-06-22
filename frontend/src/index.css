@@ -12,8 +12,8 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background: #020617;
-  color: #e2e8f0;
+  background: #f4f6f8;
+  color: #0f172a;
 }
 
 * {
@@ -31,5 +31,19 @@ textarea {
 }
 
 ::selection {
-  background: rgba(56, 189, 248, 0.35);
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.react-flow__attribution {
+  background: rgba(255, 255, 255, 0.82);
+  color: #64748b;
+  font-size: 10px;
+}
+
+.react-flow__controls {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.react-flow__controls-button {
+  border-color: #e2e8f0;
 }
