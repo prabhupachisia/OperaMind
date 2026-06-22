@@ -158,8 +158,19 @@ def add_relationship(relationships, nodes_by_id, source, relation, target, sourc
         "target_type": target_type
     }
 
-    if relationship not in relationships:
-        relationships.append(relationship)
+    for existing in relationships:
+        if (
+            existing["source"] == source
+            and existing["relation"] == relation
+            and existing["target"] == target
+        ):
+            if existing.get("source_type") == "Entity" and source_type != "Entity":
+                existing["source_type"] = source_type
+            if existing.get("target_type") == "Entity" and target_type != "Entity":
+                existing["target_type"] = target_type
+            return
+
+    relationships.append(relationship)
 
 
 def build_graph_response(graph_data):
@@ -455,6 +466,7 @@ def generate_graph(document_text: str, document_name=None):
 def save_graph(graph_data, document_id, db):
     ensure_graph_schema(db)
     relationships = graph_data.get("relationships", [])
+    seen = set()
 
     for rel in relationships:
         source = fit_graph_field(rel["source"])
@@ -462,6 +474,12 @@ def save_graph(graph_data, document_id, db):
         target = fit_graph_field(rel["target"])
         source_type = normalize_entity_type(rel.get("source_type"))
         target_type = normalize_entity_type(rel.get("target_type"))
+        key = (source, relation, target)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
 
         existing = db.query(GraphRelation).filter_by(
             document_id=document_id,
@@ -482,8 +500,10 @@ def save_graph(graph_data, document_id, db):
                 )
             )
         else:
-            existing.source_type = existing.source_type or source_type
-            existing.target_type = existing.target_type or target_type
+            if existing.source_type in (None, "Entity") and source_type != "Entity":
+                existing.source_type = source_type
+            if existing.target_type in (None, "Entity") and target_type != "Entity":
+                existing.target_type = target_type
 
     db.commit()
 

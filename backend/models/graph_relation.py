@@ -1,6 +1,4 @@
-import uuid
-
-from sqlalchemy import Column, String
+from sqlalchemy import Column, Integer, String
 
 from extensions import Base
 
@@ -10,9 +8,9 @@ class GraphRelation(Base):
     __tablename__ = "graph_relations"
 
     id = Column(
-        String(36),
+        Integer,
         primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        autoincrement=True
     )
 
     document_id = Column(
