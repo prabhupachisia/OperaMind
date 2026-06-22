@@ -299,6 +299,22 @@ OperaMind transforms static industrial documentation into an intelligent operati
 
 ---
 
+## Team
+
+| Name                | Role                   | Email                                                               | LinkedIn                                              |
+| ------------------- | ---------------------- | ------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Prabhu Pachisia** | Backend & RAG Engineer | [prabhupachisia@gmail.com](mailto:prabhupachisia@gmail.com)         | https://www.linkedin.com/in/prabhupachisia/           |
+| **Shreyes Jaiswal** | Frontend Engineer      | [shreyesjaiswal7@gmail.com](mailto:shreyesjaiswal7@gmail.com)       | https://www.linkedin.com/in/shreyes07/                |
+| **Abhinav Pandey**  | AI/ML Engineer         | [abhinavpandeydel42@gmail.com](mailto:abhinavpandeydel42@gmail.com) | https://www.linkedin.com/in/abhinav-pandey-b0242428b/ |
+
+---
+
+### Built by Team OperaMind
+
+Transforming industrial knowledge into operational intelligence through AI, Knowledge Graphs, and Semantic Search.
+
+---
+
 ## License
 
 MIT License
