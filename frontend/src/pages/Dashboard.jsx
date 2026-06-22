@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { extractGraph, fetchGraph, fetchHistory } from '../services/api'
 import GraphControls from '../components/GraphControls'
@@ -33,7 +33,7 @@ export default function Dashboard() {
     [nodes.length, edges.length, status],
   )
 
-  const loadGraph = async (documentId) => {
+  const loadGraph = useCallback(async (documentId) => {
     setLoading(true)
     setStatus('Loading saved graph...')
 
@@ -41,6 +41,7 @@ export default function Dashboard() {
       const data = documentId ? await fetchGraph(documentId) : await extractGraph(documentText)
       setNodes(data.nodes || [])
       setEdges(data.edges || [])
+      setSelectedDocumentId(documentId || null)
       setStatus(documentId ? 'Loaded saved graph from ingestion history.' : 'Graph successfully generated. Review the connected entities below.')
     } catch (error) {
       setStatus(`Graph load failed: ${error.message}`)
@@ -49,36 +50,46 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [documentText])
 
   const extractGraphHandler = async () => {
     await loadGraph()
   }
 
-  const handleSelectDocument = async (documentId) => {
-    setSelectedDocumentId(documentId)
+  const handleSelectDocument = useCallback(async (documentId) => {
     await loadGraph(documentId)
-  }
+  }, [loadGraph])
 
   useEffect(() => {
     const selectedId = searchParams.get('document_id')
+    let active = true
 
     if (selectedId) {
-      setSelectedDocumentId(selectedId)
-      handleSelectDocument(selectedId)
+      const loadSelectedGraph = async () => {
+        await Promise.resolve()
+
+        if (active) {
+          await handleSelectDocument(selectedId)
+        }
+      }
+
+      loadSelectedGraph()
     }
 
     const loadHistory = async () => {
       try {
         const history = await fetchHistory()
         setDocuments(history.documents || [])
-      } catch (error) {
-        console.warn('Unable to load history:', error)
+      } catch {
+        setDocuments([])
       }
     }
 
     loadHistory()
-  }, [])
+    return () => {
+      active = false
+    }
+  }, [handleSelectDocument, searchParams])
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_30%),#020617] text-slate-100">
@@ -153,9 +164,9 @@ export default function Dashboard() {
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">
                 <p className="font-semibold text-white">Rendered graph is compatible with React Flow.</p>
                 <ul className="mt-4 space-y-3 text-slate-400">
-                  <li>• <strong>nodes</strong> are shown as graph vertices.</li>
-                  <li>• <strong>edges</strong> are shown as directed relationships.</li>
-                  <li>• Each relation label is normalized for clean graph rendering.</li>
+                  <li><strong>nodes</strong> are shown as graph vertices.</li>
+                  <li><strong>edges</strong> are shown as directed relationships.</li>
+                  <li>Each relation label is normalized for clean graph rendering.</li>
                 </ul>
               </div>
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-sm text-slate-300">

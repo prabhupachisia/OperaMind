@@ -3,6 +3,8 @@ const GRAPH_PATH = import.meta.env.VITE_GRAPH_PATH || '/graph'
 const UPLOAD_PATH = import.meta.env.VITE_UPLOAD_PATH || '/upload'
 const CHAT_PATH = import.meta.env.VITE_CHAT_PATH || '/chat'
 const HISTORY_PATH = import.meta.env.VITE_HISTORY_PATH || '/history'
+const COMPLIANCE_PATH = import.meta.env.VITE_COMPLIANCE_PATH || '/compliance'
+const INCIDENTS_PATH = import.meta.env.VITE_INCIDENTS_PATH || '/incidents'
 
 function buildEndpoint(path) {
   const base = API_URL.replace(/\/+$/, '')
@@ -94,6 +96,56 @@ export async function fetchHistory() {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.error || 'History fetch failed')
+  }
+
+  return response.json()
+}
+
+export async function fetchCompliance(documentId) {
+  const query = documentId ? `?document_id=${encodeURIComponent(documentId)}` : ''
+  const endpoint = buildEndpoint(`${COMPLIANCE_PATH}${query}`)
+
+  const response = await fetch(endpoint, {
+    method: 'GET',
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error || 'Compliance analysis failed')
+  }
+
+  return response.json()
+}
+
+export async function fetchIncidents() {
+  const endpoint = buildEndpoint(INCIDENTS_PATH)
+
+  const response = await fetch(endpoint, {
+    method: 'GET',
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error || 'Incident fetch failed')
+  }
+
+  return response.json()
+}
+
+export async function findSimilarIncidents(query, topK = 5) {
+  const endpoint = buildEndpoint(`${INCIDENTS_PATH}/similar`)
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, top_k: topK }),
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error || 'Incident similarity search failed')
   }
 
   return response.json()

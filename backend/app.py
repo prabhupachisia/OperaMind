@@ -10,6 +10,9 @@ from routes.graph import graph_bp
 from routes.chat import chat_bp
 from routes.upload import upload_bp
 from routes.history import history_bp
+from routes.compliance import compliance_bp
+from routes.incidents import incidents_bp
+from config import FLASK_DEBUG
 
 # IMPORTANT
 import models
@@ -73,9 +76,19 @@ app.register_blueprint(
     url_prefix="/history"
 )
 
+app.register_blueprint(
+    compliance_bp,
+    url_prefix="/compliance"
+)
+
+app.register_blueprint(
+    incidents_bp,
+    url_prefix="/incidents"
+)
+
 if __name__ == "__main__":
     app.run(
-        debug=True,
+        debug=FLASK_DEBUG,
         host="0.0.0.0",
         port=5000
     )

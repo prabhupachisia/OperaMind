@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 from models.graph_relation import GraphRelation
-from services.groq_service import client
+from services.groq_service import get_groq_client
 
 PROMPT_FILE = Path(__file__).resolve().parents[1] / "prompts" / "graph_generation.txt"
 
@@ -98,27 +98,77 @@ def build_graph_response(graph_data):
     return {"nodes": nodes, "edges": edges, "relationships": relationships}
 
 
+def generate_heuristic_graph(document_text: str):
+    equipment_pattern = r"\b[A-Z][A-Za-z]+\s+[A-Z]{1,4}\d{2,4}\b|\b[A-Z]{1,4}\d{2,4}\b"
+    issue_pattern = r"\b(failure|leak|wear|overheating|inspection|maintenance|repair|audit|procedure|incident)\b"
+
+    entities = []
+    relationships = []
+
+    for match in re.finditer(equipment_pattern, document_text):
+        entity = normalize_text(match.group(0))
+        if entity not in entities:
+            entities.append(entity)
+
+    for sentence in re.split(r"(?<=[.!?])\s+", document_text):
+        equipment = re.search(equipment_pattern, sentence)
+        issue = re.search(issue_pattern, sentence, flags=re.IGNORECASE)
+
+        if not equipment or not issue:
+            continue
+
+        source = normalize_text(equipment.group(0))
+        target = normalize_text(issue.group(0).title())
+        relation = "REFERENCED_WITH"
+
+        if re.search(r"fail|failure", sentence, flags=re.IGNORECASE):
+            relation = "FAILED_DUE_TO"
+        elif re.search(r"inspect|audit", sentence, flags=re.IGNORECASE):
+            relation = "INSPECTED_FOR"
+        elif re.search(r"maint|repair", sentence, flags=re.IGNORECASE):
+            relation = "HAS_MAINTENANCE_ACTIVITY"
+
+        relationships.append({
+            "source": source,
+            "relation": relation,
+            "target": target
+        })
+
+    return build_graph_response({
+        "entities": entities,
+        "relationships": relationships
+    })
+
+
 def generate_graph(document_text: str):
+    client = get_groq_client()
+
+    if client is None:
+        return generate_heuristic_graph(document_text)
+
     prompt = load_graph_prompt(document_text)
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0
-    )
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0
+        )
 
-    content = response.choices[0].message.content
-    raw_graph = parse_graph_response(content)
+        content = response.choices[0].message.content
+        raw_graph = parse_graph_response(content)
 
-    if not isinstance(raw_graph, dict):
-        raise ValueError("Graph extraction must return a JSON object")
+        if not isinstance(raw_graph, dict):
+            raise ValueError("Graph extraction must return a JSON object")
 
-    return build_graph_response(raw_graph)
+        return build_graph_response(raw_graph)
+    except Exception:
+        return generate_heuristic_graph(document_text)
 
 
 def save_graph(

@@ -1,6 +1,7 @@
 from flask import Blueprint
 from flask import request
 from flask import jsonify
+from werkzeug.utils import secure_filename
 
 import os
 import uuid
@@ -40,8 +41,10 @@ def upload_document():
             "error": "No file selected"
         }), 400
 
+    original_filename = secure_filename(file.filename)
+
     extension = os.path.splitext(
-        file.filename
+        original_filename
     )[1]
 
     filename = f"{uuid.uuid4()}{extension}"
@@ -65,7 +68,7 @@ def upload_document():
         db = SessionLocal()
         result = process_document(
             filename=filename,
-            original_filename=file.filename,
+            original_filename=original_filename,
             pages=pages,
             document_type=document_type,
             db=db
@@ -78,8 +81,6 @@ def upload_document():
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
     except Exception as error:
-        import traceback
-        traceback.print_exc()
         return jsonify({"error": "Document ingestion failed.", "details": str(error)}), 500
     finally:
         if "db" in locals():

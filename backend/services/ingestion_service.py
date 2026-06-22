@@ -99,9 +99,12 @@ def process_document(
         for chunk in saved_chunks
     ]
 
-    embeddings = get_embeddings(
-        chunk_texts
-    )
+    try:
+        embeddings = get_embeddings(
+            chunk_texts
+        )
+    except Exception:
+        embeddings = []
 
     # --------------------------------------------------
     # Pinecone
@@ -128,7 +131,10 @@ def process_document(
         })
 
     if vectors:
-        upsert_chunks(vectors)
+        try:
+            upsert_chunks(vectors)
+        except Exception:
+            pass
 
     # --------------------------------------------------
     # Graph Generation

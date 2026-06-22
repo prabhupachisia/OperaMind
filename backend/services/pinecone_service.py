@@ -1,17 +1,29 @@
-from pinecone import Pinecone
-
 from config import (
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME
 )
 
-pc = Pinecone(
-    api_key=PINECONE_API_KEY
-)
+pc = None
+index = None
 
-index = pc.Index(
-    PINECONE_INDEX_NAME
-)
+
+def get_index():
+    global pc, index
+
+    if not PINECONE_API_KEY or not PINECONE_INDEX_NAME:
+        return None
+
+    if index is None:
+        from pinecone import Pinecone
+
+        pc = Pinecone(
+            api_key=PINECONE_API_KEY
+        )
+        index = pc.Index(
+            PINECONE_INDEX_NAME
+        )
+
+    return index
 
 
 def upsert_chunks(
@@ -35,6 +47,11 @@ def upsert_chunks(
     if not vectors:
         return
 
+    pinecone_index = get_index()
+
+    if pinecone_index is None:
+        return
+
     for start in range(
         0,
         len(vectors),
@@ -45,7 +62,7 @@ def upsert_chunks(
             start:start + batch_size
         ]
 
-        index.upsert(
+        pinecone_index.upsert(
             vectors=batch
         )
 
@@ -58,7 +75,12 @@ def delete_document_chunks(
     belonging to a document.
     """
 
-    index.delete(
+    pinecone_index = get_index()
+
+    if pinecone_index is None:
+        return
+
+    pinecone_index.delete(
         filter={
             "document_id": {
                 "$eq": document_id
@@ -85,7 +107,12 @@ def query_index(
     if filter_metadata:
         kwargs["filter"] = filter_metadata
 
-    return index.query(
+    pinecone_index = get_index()
+
+    if pinecone_index is None:
+        return None
+
+    return pinecone_index.query(
         **kwargs
     )
 
@@ -97,7 +124,12 @@ def fetch_chunk(
     Fetch single vector.
     """
 
-    return index.fetch(
+    pinecone_index = get_index()
+
+    if pinecone_index is None:
+        return None
+
+    return pinecone_index.fetch(
         ids=[chunk_id]
     )
 
@@ -111,7 +143,12 @@ def get_document_chunks(
     for a document.
     """
 
-    return index.query(
+    pinecone_index = get_index()
+
+    if pinecone_index is None:
+        return None
+
+    return pinecone_index.query(
         vector=[0.0] * 384,
         top_k=top_k,
         include_metadata=True,

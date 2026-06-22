@@ -1,4 +1,4 @@
-from services.groq_service import client
+from services.groq_service import get_groq_client
 from services.retrieval_service import retrieve_documents
 from prompts.rag_prompt import RAG_PROMPT
 
@@ -67,24 +67,38 @@ GRAPH CONTEXT:
             query=query
         )
 
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are OperaMind, an Industrial "
-                        "Knowledge Intelligence Assistant."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.2,
-            max_tokens=1000
-        )
+        client = get_groq_client()
+
+        if client is None:
+            answer = (
+                "Groq is not configured, so I used local retrieval only. "
+                "Relevant context found:\n\n"
+            )
+            answer += "\n\n".join(
+                f"- {doc.get('source', 'Unknown')} p.{doc.get('page', 'N/A')}: "
+                f"{doc.get('text', '')[:450]}"
+                for doc in documents[:3]
+            )
+        else:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are OperaMind, an Industrial "
+                            "Knowledge Intelligence Assistant."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=1000
+            )
+            answer = response.choices[0].message.content
 
         sources = sorted(
             {
@@ -103,7 +117,7 @@ GRAPH CONTEXT:
         )
 
         return {
-            "answer": response.choices[0].message.content,
+            "answer": answer,
             "sources": sources,
             "confidence": confidence
         }

@@ -76,7 +76,7 @@ export default function Chat() {
             {loading ? 'Analyzing corpus...' : 'Ask OperaMind'}
           </button>
           <span className="text-sm text-slate-400">
-            Confidence: {confidence !== null ? `${confidence}` : '–'}
+            Confidence: {confidence !== null ? `${confidence}` : '-'}
           </span>
         </div>
 

@@ -38,9 +38,9 @@ export default function Home() {
         <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">
           <h3 className="text-xl font-semibold text-white">Why this matters</h3>
           <ul className="mt-4 space-y-3 text-slate-400">
-            <li>• Reduce time spent searching for disconnected documents.</li>
-            <li>• Preserve retiring operational knowledge in a structured graph.</li>
-            <li>• Enable safer, faster, and more consistent decisions on the plant floor.</li>
+            <li>Reduce time spent searching for disconnected documents.</li>
+            <li>Preserve retiring operational knowledge in a structured graph.</li>
+            <li>Enable safer, faster, and more consistent decisions on the plant floor.</li>
           </ul>
         </div>
         <div className="rounded-4xl border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-950/20">

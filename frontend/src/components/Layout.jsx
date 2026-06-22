@@ -5,6 +5,8 @@ const navigation = [
   { path: '/graph', label: 'Knowledge Graph' },
   { path: '/upload', label: 'Upload Docs' },
   { path: '/chat', label: 'Expert Copilot' },
+  { path: '/compliance', label: 'Compliance' },
+  { path: '/incidents', label: 'Incidents' },
   { path: '/history', label: 'History' },
   { path: '/settings', label: 'Settings' },
 ]

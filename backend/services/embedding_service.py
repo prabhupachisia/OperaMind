@@ -6,7 +6,16 @@ MODEL_NAME = os.getenv(
     "sentence-transformers/all-MiniLM-L6-v2"
 )
 
-model = SentenceTransformer(MODEL_NAME)
+model = None
+
+
+def get_model():
+    global model
+
+    if model is None:
+        model = SentenceTransformer(MODEL_NAME)
+
+    return model
 
 
 def get_embedding(text: str):
@@ -17,7 +26,7 @@ def get_embedding(text: str):
     if not text or not text.strip():
         raise ValueError("Cannot generate embedding for empty text")
 
-    embedding = model.encode(
+    embedding = get_model().encode(
         text,
         normalize_embeddings=True,
         convert_to_numpy=True
@@ -43,7 +52,7 @@ def get_embeddings(texts: list[str]):
     if not cleaned_texts:
         return []
 
-    embeddings = model.encode(
+    embeddings = get_model().encode(
         cleaned_texts,
         normalize_embeddings=True,
         convert_to_numpy=True,
